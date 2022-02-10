@@ -51,7 +51,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	db := GetDB()
 
-	for _, r := range uploadedData.ProbeRequest {
+	for _, r := range uploadedData.ProbeRequests {
 
 		// Insert data into database
 		sql := `
@@ -64,7 +64,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	log.Printf("Inserted %d records", len(uploadedData.ProbeRequest))
+	log.Printf("Inserted %d records", len(uploadedData.ProbeRequests))
 
 }
 
@@ -94,12 +94,14 @@ func CheckError(err error) {
 }
 
 type UploadJSON struct {
-	DeviceID     string `json:"device_id"`
-	ProbeRequest []struct {
-		ApSsid       string `json:"ap_ssid"`
-		Intent       string `json:"intent"`
-		Power        int64  `json:"power"`
-		StationBssid string `json:"station_bssid"`
-		Time         int64  `json:"time"`
-	} `json:"probe_request"`
+	DeviceID      string         `json:"device_id"`
+	ProbeRequests []ProbeRequest `json:"probe_request"`
+}
+
+type ProbeRequest struct {
+	ApSsid       string `json:"ap_ssid"`
+	Intent       string `json:"intent"`
+	Power        int64  `json:"power"`
+	StationBssid string `json:"station_bssid"`
+	Time         int64  `json:"time"`
 }
