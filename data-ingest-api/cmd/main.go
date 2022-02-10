@@ -14,6 +14,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var db *sql.DB
+
 func main() {
 
 	r := mux.NewRouter()
@@ -21,10 +23,12 @@ func main() {
 
 	server := &http.Server{
 		Handler:      r,
-		Addr:         "127.0.0.1:2000",
+		Addr:         "0.0.0.0:2000",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
+
+	log.Println("Starting server...")
 
 	log.Fatal(server.ListenAndServe())
 
@@ -66,11 +70,18 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetDB() *sql.DB {
 
-	// Stablish connection
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", "raulportugues", "tfg")
+	if db == nil {
 
-	db, err := sql.Open("postgres", psqlconn)
-	CheckError(err)
+		// Stablish connection
+		psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", "raulportugues", "tfg")
+
+		database, err := sql.Open("postgres", psqlconn)
+
+		db = database
+
+		CheckError(err)
+
+	}
 
 	return db
 
@@ -78,7 +89,7 @@ func GetDB() *sql.DB {
 
 func CheckError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 
