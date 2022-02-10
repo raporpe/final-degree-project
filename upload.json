@@ -1,0 +1,14 @@
+{
+	"device_id": "raspberry-1",
+	"probe_request": [
+		{
+			"station_bssid": "1F:A7:9E:00:1E:B4",
+			"ap_ssid": "4E:00:9E:1B:1E:9E",
+            "intent": "VODAFONE_3241",
+            "time": 1644495152,
+            "power": -34
+		}
+	]
+    
+	
+}
