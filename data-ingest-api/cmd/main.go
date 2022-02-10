@@ -95,7 +95,7 @@ func CheckError(err error) {
 
 type UploadJSON struct {
 	DeviceID      string         `json:"device_id"`
-	ProbeRequests []ProbeRequest `json:"probe_request"`
+	ProbeRequests []ProbeRequest `json:"probe_requests"`
 }
 
 type ProbeRequest struct {
