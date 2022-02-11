@@ -23,7 +23,7 @@ class DataManager(metaclass=Singleton):
     def __init__(self):
         self.last_upload_time = time.time()
         self.current_probe_requests = []
-        self.current_beacons = set()
+        self.current_beacons = []
 
     def register_probe_request(self, station_bssid, power, intent=None):
 
@@ -39,12 +39,14 @@ class DataManager(metaclass=Singleton):
         self.send_data()
 
     def register_beacon(self, bssid, ssid):
-        self.current_beacons.add(
-            {
-                "bssid": bssid,
-                "ssid": ssid
-            }
-        )
+        beacon = {
+            "bssid": bssid,
+            "ssid": ssid
+        }
+
+        if beacon in self.current_beacons: return
+
+        self.current_beacons.append(beacon)
 
         self.send_data()
 
@@ -62,8 +64,6 @@ class DataManager(metaclass=Singleton):
                 "beacons": self.current_beacons
             }
 
-            print(json)
-
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
                   .format(probes=json["probe_requests"], beacons=json["beacons"]))
 
@@ -73,6 +73,6 @@ class DataManager(metaclass=Singleton):
             print("Uploaded data to backend")
 
             # Reset the state
-            self.last_time = time.time()
+            self.last_upload_time = time.time()
             self.current_probe_requests = []
-            self.current_beacons = set()
+            self.current_beacons = []
