@@ -1,8 +1,5 @@
-from http.client import REQUEST_ENTITY_TOO_LARGE
 from scapy.all import *
 import traceback
-import requests
-import time
 from data_manager import DataManager
 
 
@@ -18,6 +15,8 @@ def packet_handler(pkt):
     elif pkt.haslayer(Dot11Beacon):
         manager = DataManager()
         manager.register_beacon(pkt.addr3, pkt.info.decode())
+    
+
         
 
 def start_sniffer():
