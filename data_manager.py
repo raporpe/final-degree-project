@@ -72,7 +72,7 @@ class DataManager(metaclass=Singleton):
 
             print("Uploaded data to backend")
 
+            # Reset the state
             self.last_time = time.time()
             self.current_probe_requests = []
             self.current_beacons = set()
-            # Reset the state
