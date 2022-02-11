@@ -55,11 +55,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO data (device_id, station_bssid, ap_ssid, intent, time, power)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO probe_request (device_id, station_bssid, intent, time, power)
+		VALUES ($1, $2, $3, $4, $5)
 		`
 
-		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationBssid, r.ApSsid, r.Intent, r.Time, r.Power)
+		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationBssid, r.Intent, r.Time, r.Power)
 		CheckError(err)
 
 	}
@@ -99,9 +99,8 @@ type UploadJSON struct {
 }
 
 type ProbeRequest struct {
-	ApSsid       string `json:"ap_ssid"`
-	Intent       string `json:"intent"`
-	Power        int64  `json:"power"`
 	StationBssid string `json:"station_bssid"`
+	Intent       string `json:"intent"`
 	Time         int64  `json:"time"`
+	Power        int64  `json:"power"`
 }
