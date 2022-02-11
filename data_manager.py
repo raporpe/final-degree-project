@@ -29,7 +29,7 @@ class DataManager(metaclass=Singleton):
 
     def register_probe_request(self, station_bssid, power, intent=None):
         try:
-            vendor = MacLookup().lookup(station_bssid) 
+            vendor = MacLookup().lookup(station_bssid)
         except VendorNotFoundError:
             vendor = None
 
@@ -51,7 +51,8 @@ class DataManager(metaclass=Singleton):
             "ssid": ssid
         }
 
-        if beacon in self.current_beacons: return
+        if beacon in self.current_beacons:
+            return
 
         self.current_beacons.append(beacon)
 
