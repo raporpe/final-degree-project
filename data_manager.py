@@ -1,5 +1,7 @@
 import time
 import requests
+from mac_vendor_lookup import MacLookup, VendorNotFoundError
+
 
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
@@ -26,13 +28,18 @@ class DataManager(metaclass=Singleton):
         self.current_beacons = []
 
     def register_probe_request(self, station_bssid, power, intent=None):
+        try:
+            vendor = MacLookup().lookup(station_bssid) 
+        except VendorNotFoundError:
+            vendor = None
 
         self.current_probe_requests.append(
             {
                 "station_bssid": station_bssid,
                 "intent": intent,
                 "time": int(time.time()),
-                "power": power
+                "power": power,
+                "vendor": vendor
             }
         )
 
