@@ -6,7 +6,7 @@ import time
 
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
-UPLOAD_PERIOD = 15
+UPLOAD_PERIOD = 10
 
 counter = 0
 
@@ -22,12 +22,11 @@ def packet_handler(pkt):
 
 last_time = 0
 current_data = []
-def add_data(station_bssid, power, ap_ssid="ff:ff:ff:ff:ff:ff", intent=None):
+def add_data(station_bssid, power, intent=None):
     global current_data
     current_data.append(
 		{
 			"station_bssid": station_bssid,
-			"ap_ssid": ap_ssid,
             "intent": intent,
             "time": int(time.time()),
             "power": power
@@ -37,17 +36,22 @@ def add_data(station_bssid, power, ap_ssid="ff:ff:ff:ff:ff:ff", intent=None):
     global last_time
     if time.time() - last_time > UPLOAD_PERIOD:
         print("Passed {} seconds. Uploading data to database.".format(UPLOAD_PERIOD))
-        json = 	{ 
-            "device_id": DEVICE_ID,
-	        "probe_request": current_data
-        }
-
-        print("Inserting " + str(len(json["probe_request"])))
-
-        requests.post(API_ENDPOINT, json=json)
+        send_data(current_data)
         last_time = time.time()
-        print("Uploaded data to backend")
         current_data = []
+
+
+def send_data(probe_requests):
+
+    json = 	{ 
+        "device_id": DEVICE_ID,
+        "probe_requests": probe_requests
+    }
+
+    print("Inserting {} records".format(len(json["probe_requests"])))
+    requests.post(API_ENDPOINT, json=json)
+    print("Uploaded data to backend")
+
 
 def start_sniffer():
     try:
