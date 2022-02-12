@@ -51,11 +51,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	db := GetDB()
 
-	for _, r := range uploadedData.ProbeRequests {
+	for _, r := range uploadedData.ProbeRequestFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO probe_request (device_id, station_mac, intent, time, power, station_mac_vendor)
+		INSERT INTO probe_request_frames (device_id, station_mac, intent, time, power, station_mac_vendor)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
@@ -64,24 +64,24 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	for _, b := range uploadedData.Beacons {
+	for _, b := range uploadedData.BeaconFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO access_point (bssid, ssid)
-		VALUES ($1, $2)
+		INSERT INTO beacon_frames (bssid, ssid, device_id)
+		VALUES ($1, $2, $3)
 		`
 
-		_, err := db.Exec(sql, b.BSSID, b.SSID)
+		_, err := db.Exec(sql, b.BSSID, b.SSID, uploadedData.DeviceID)
 		CheckError(err)
 
 	}
 
-	for _, d := range uploadedData.Dataframes {
+	for _, d := range uploadedData.DataFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO dataframes (bssid, station_mac, time, power, station_mac_vendor)
+		INSERT INTO data_frames (bssid, station_mac, time, power, station_mac_vendor)
 		VALUES ($1, $2, $3, $4, $5)
 		`
 
@@ -90,7 +90,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	log.Printf("Inserted %d probes and %d beacons", len(uploadedData.ProbeRequests), len(uploadedData.Beacons))
+	log.Printf("Inserted %d probes and %d beacons", len(uploadedData.ProbeRequestFrames), len(uploadedData.BeaconFrames))
 
 }
 
@@ -120,13 +120,14 @@ func CheckError(err error) {
 }
 
 type UploadJSON struct {
-	DeviceID      string         `json:"device_id"`
-	ProbeRequests []ProbeRequest `json:"probe_requests"`
-	Beacons       []Beacon       `json:"beacons"`
-	Dataframes    []Dataframe    `json:"dataframes"`
+	DeviceID           string              `json:"device_id"`
+	ProbeRequestFrames []ProbeRequestFrame `json:"probe_request_frames"`
+	BeaconFrames       []BeaconFrame       `json:"beacon_frames"`
+	DataFrames         []DataFrame         `json:"data_frames"`
+	ActionFrames       []ActionFrame       `json:"action_frames"`
 }
 
-type ProbeRequest struct {
+type ProbeRequestFrame struct {
 	StationMAC       string  `json:"station_mac"`
 	Intent           *string `json:"intent"`
 	Time             int64   `json:"time"`
@@ -134,12 +135,20 @@ type ProbeRequest struct {
 	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
 }
 
-type Beacon struct {
+type BeaconFrame struct {
 	SSID  string `json:"ssid"`
 	BSSID string `json:"bssid"`
 }
 
-type Dataframe struct {
+type DataFrame struct {
+	BSSID            string  `json:"bssid"`
+	StationMAC       string  `json:"station_mac"`
+	Time             int64   `json:"time"`
+	Power            int64   `json:"power"`
+	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+}
+
+type ActionFrame struct {
 	BSSID            string  `json:"bssid"`
 	StationMAC       string  `json:"station_mac"`
 	Time             int64   `json:"time"`
