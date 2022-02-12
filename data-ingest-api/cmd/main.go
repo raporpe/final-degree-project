@@ -55,16 +55,42 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO probe_request (device_id, station_bssid, intent, time, power)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO probe_request (device_id, station_mac, intent, time, power, station_mac_vendor)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationBssid, r.Intent, r.Time, r.Power)
+		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, r.StationMACVendor)
 		CheckError(err)
 
 	}
 
-	log.Printf("Inserted %d records", len(uploadedData.ProbeRequests))
+	for _, b := range uploadedData.Beacons {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO access_point (bssid, ssid)
+		VALUES ($1, $2)
+		`
+
+		_, err := db.Exec(sql, b.BSSID, b.SSID)
+		CheckError(err)
+
+	}
+
+	for _, d := range uploadedData.Dataframes {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO dataframes (bssid, station_mac, time, power, station_mac_vendor)
+		VALUES ($1, $2, $3, $4, $5)
+		`
+
+		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Time, d.Power, d.StationMACVendor)
+		CheckError(err)
+
+	}
+
+	log.Printf("Inserted %d probes and %d beacons", len(uploadedData.ProbeRequests), len(uploadedData.Beacons))
 
 }
 
@@ -96,11 +122,27 @@ func CheckError(err error) {
 type UploadJSON struct {
 	DeviceID      string         `json:"device_id"`
 	ProbeRequests []ProbeRequest `json:"probe_requests"`
+	Beacons       []Beacon       `json:"beacons"`
+	Dataframes    []Dataframe    `json:"dataframes"`
 }
 
 type ProbeRequest struct {
-	StationBssid string `json:"station_bssid"`
-	Intent       string `json:"intent"`
-	Time         int64  `json:"time"`
-	Power        int64  `json:"power"`
+	StationMAC       string  `json:"station_mac"`
+	Intent           *string `json:"intent"`
+	Time             int64   `json:"time"`
+	Power            int64   `json:"power"`
+	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+}
+
+type Beacon struct {
+	SSID  string `json:"ssid"`
+	BSSID string `json:"bssid"`
+}
+
+type Dataframe struct {
+	BSSID            string  `json:"bssid"`
+	StationMAC       string  `json:"station_mac"`
+	Time             int64   `json:"time"`
+	Power            int64   `json:"power"`
+	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
 }
