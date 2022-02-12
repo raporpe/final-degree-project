@@ -117,8 +117,16 @@ def packet_handler(pkt):
                 power=power
             )
 
+        # Control frames
         elif pkt.type == 1:
-            DataManager().register_action_frame(
+
+            pkt.show()
+
+            bssid = get_bssid_from_pkt(pkt)
+            station_mac = get_station_mac_from_pkt(pkt)
+            power = pkt.dBm_AntSignal
+
+            DataManager().register_control_frame(
                 bssid=bssid,
                 station_mac=station_mac,
                 powre=power,
