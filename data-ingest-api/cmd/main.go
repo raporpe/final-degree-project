@@ -77,6 +77,19 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	for _, d := range uploadedData.Dataframes {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO dataframes (bssid, station_mac, time, power, vendor)
+		VALUES ($1, $2, $3, $4, $5)
+		`
+
+		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Time, d.Power, d.Vendor)
+		CheckError(err)
+
+	}
+
 	log.Printf("Inserted %d probes and %d beacons", len(uploadedData.ProbeRequests), len(uploadedData.Beacons))
 
 }
@@ -110,6 +123,7 @@ type UploadJSON struct {
 	DeviceID      string         `json:"device_id"`
 	ProbeRequests []ProbeRequest `json:"probe_requests"`
 	Beacons       []Beacon       `json:"beacons"`
+	Dataframes    []Dataframe    `json:"dataframes"`
 }
 
 type ProbeRequest struct {
@@ -123,4 +137,12 @@ type ProbeRequest struct {
 type Beacon struct {
 	SSID  string `json:"ssid"`
 	BSSID string `json:"bssid"`
+}
+
+type Dataframe struct {
+	BSSID      string  `json:"bssid"`
+	StationMAC string  `json:"station_mac"`
+	Time       int64   `json:"time"`
+	Power      int64   `json:"power"`
+	Vendor     *string `json:"vendor"` // So that the string is nullable
 }
