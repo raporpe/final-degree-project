@@ -73,7 +73,7 @@ class DataManager(metaclass=Singleton):
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
-                  .format(probes=json["probe_requests"], beacons=json["beacons"]))
+                  .format(probes=len(json["probe_requests"]), beacons=len(json["beacons"])))
 
             # Send data to backend in the post payload
             requests.post(API_ENDPOINT, json=json)
