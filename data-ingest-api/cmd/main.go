@@ -55,11 +55,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO probe_request (device_id, station_mac, intent, time, power, vendor)
+		INSERT INTO probe_request (device_id, station_mac, intent, time, power, station_mac_vendor)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, r.Vendor)
+		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, r.StationMACVendor)
 		CheckError(err)
 
 	}
@@ -81,11 +81,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO dataframes (bssid, station_mac, time, power, vendor)
+		INSERT INTO dataframes (bssid, station_mac, time, power, station_mac_vendor)
 		VALUES ($1, $2, $3, $4, $5)
 		`
 
-		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Time, d.Power, d.Vendor)
+		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Time, d.Power, d.StationMACVendor)
 		CheckError(err)
 
 	}
@@ -127,11 +127,11 @@ type UploadJSON struct {
 }
 
 type ProbeRequest struct {
-	StationMAC string  `json:"station_mac"`
-	Intent     string  `json:"intent"`
-	Time       int64   `json:"time"`
-	Power      int64   `json:"power"`
-	Vendor     *string `json:"vendor"` // So that the string is nullable
+	StationMAC       string  `json:"station_mac"`
+	Intent           *string `json:"intent"`
+	Time             int64   `json:"time"`
+	Power            int64   `json:"power"`
+	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
 }
 
 type Beacon struct {
@@ -140,9 +140,9 @@ type Beacon struct {
 }
 
 type Dataframe struct {
-	BSSID      string  `json:"bssid"`
-	StationMAC string  `json:"station_mac"`
-	Time       int64   `json:"time"`
-	Power      int64   `json:"power"`
-	Vendor     *string `json:"vendor"` // So that the string is nullable
+	BSSID            string  `json:"bssid"`
+	StationMAC       string  `json:"station_mac"`
+	Time             int64   `json:"time"`
+	Power            int64   `json:"power"`
+	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
 }
