@@ -27,17 +27,17 @@ class DataManager(metaclass=Singleton):
         self.current_probe_requests = []
         self.current_beacons = []
         self.current_dataframes = []
-        MacLookup().update_vendors()
+        #MacLookup().update_vendors()
 
-    def register_probe_request(self, station_bssid, power, intent=None):
+    def register_probe_request(self, station_mac, power, intent=None):
         
         self.current_probe_requests.append(
             {
-                "station_bssid": station_bssid,
+                "station_mac": station_mac,
                 "intent": intent,
                 "time": int(time.time()),
                 "power": power,
-                "vendor": self._get_mac_vendor(station_bssid)
+                "station_mac_vendor": self._get_mac_vendor(station_mac)
             }
         )
 
@@ -60,18 +60,20 @@ class DataManager(metaclass=Singleton):
 
     def register_dataframe(self, bssid, station_mac, power):
 
+        if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
+            return
+
         self.current_dataframes.append(
             {
                 "bssid": bssid,
                 "station_mac": station_mac,
                 "time": int(time.time()),
                 "power": power,
-                "vendor": self._get_mac_vendor(station_mac)
+                "station_mac_vendor": self._get_mac_vendor(station_mac),
             }
         )
 
         self._send_data()
-
 
     # Sends the data to the backend
     def _send_data(self):
@@ -84,7 +86,8 @@ class DataManager(metaclass=Singleton):
             json = {
                 "device_id": DEVICE_ID,
                 "probe_requests": self.current_probe_requests,
-                "beacons": self.current_beacons
+                "beacons": self.current_beacons,
+                "dataframes": self.current_dataframes
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
@@ -101,13 +104,19 @@ class DataManager(metaclass=Singleton):
             self.current_beacons = []
             self.current_dataframes = []
 
-    def _get_mac_vendor(mac):
+    def _get_mac_vendor(self, mac):
         vendor = None
+        print(mac)
         try:
             vendor = MacLookup().lookup(mac)
         except VendorNotFoundError:
             pass
         
         return vendor
+
+    def _validate_mac(self, mac):
+        return (mac != None
+                and mac != "ff:ff:ff:ff:ff:ff"
+                and mac != "00:00:00:00:00:00")
 
 

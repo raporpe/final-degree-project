@@ -7,7 +7,7 @@ from mac_vendor_lookup import MacLookup, VendorNotFoundError
 
 # Get the mac address of the wireless mobile device
 # that we are interested in targeting
-def get_mac_from_pkt(pkt):
+def get_station_mac_from_pkt(pkt):
 
     # If the address 4 has meaning, then the packet is from a wireless bridge
     # This means that no mobile wireless device is involved
@@ -56,6 +56,34 @@ def get_mac_from_pkt(pkt):
 
 
 
+# Get the mac address of the bssid (ap mac address)
+def get_bssid_from_pkt(pkt):
+
+    addr_matrix = [
+        {
+            "meaning": pkt[Dot11].address_meaning(1),
+            "addr": pkt.addr1
+        },
+        {
+            "meaning": pkt[Dot11].address_meaning(2),
+            "addr": pkt.addr2
+        },
+        {
+            "meaning": pkt[Dot11].address_meaning(3),
+            "addr": pkt.addr3
+        },
+        {
+            "meaning": pkt[Dot11].address_meaning(4),
+            "addr": pkt.addr4
+        }
+    ]
+
+    for addr in addr_matrix:
+        if "BSSID" in addr["meaning"]:
+            return addr["addr"]
+
+    
+
 def packet_handler(pkt):
     if pkt.haslayer(Dot11):
 
@@ -65,20 +93,33 @@ def packet_handler(pkt):
             print("Packet with MAC {pkt.addr2}, power {pkt.dBm_AntSignal} and SSID {ssid} ".format(
                 show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
 
-            manager = DataManager()
-            manager.register_probe_request(
-                station_bssid=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
+            DataManager().register_probe_request(
+                station_mac=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
 
         # Beacons
         elif pkt.type == 0 and pkt.subtype == 8:
-            manager = DataManager()
-            manager.register_beacon(pkt.addr3, pkt.info.decode())
+            print("Beacon with power " + str(pkt.dBm_AntSignal))
+            DataManager().register_beacon(bssid=pkt.addr3, ssid=pkt.info.decode())
 
         # Data
         elif pkt.type == 2:
-            pass
 
-            #print(str(pkt.show()) + str(pkt.addr1))
+            bssid = get_bssid_from_pkt(pkt)
+            station_mac = get_station_mac_from_pkt(pkt)
+            power = pkt.dBm_AntSignal
+
+            print("Data packet with power {pkt.dBm_AntSignal}".format(
+                pkt=pkt))
+            
+            DataManager().register_dataframe(
+                bssid=bssid,
+                station_mac=station_mac,
+                power=power
+            )
+
+        else:
+            print("Useless packet type {t} subtype {st}".format(t=pkt.type, st=pkt.subtype))
+
 
 
 def start_sniffer():
