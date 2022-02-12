@@ -24,14 +24,15 @@ class DataManager(metaclass=Singleton):
 
     def __init__(self):
         self.last_upload_time = time.time()
-        self.current_probe_requests = []
-        self.current_beacons = []
-        self.current_dataframes = []
+        self.probe_request_frames = []
+        self.beacon_frames = []
+        self.data_frames = []
+        self.action_frames = []
         #MacLookup().update_vendors()
 
-    def register_probe_request(self, station_mac, power, intent=None):
+    def register_probe_request_frame(self, station_mac, power, intent=None):
         
-        self.current_probe_requests.append(
+        self.probe_request_frames.append(
             {
                 "station_mac": station_mac,
                 "intent": intent,
@@ -43,7 +44,7 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_beacon(self, bssid, ssid):
+    def register_beacon_frame(self, bssid, ssid):
         
         beacon = {
             "bssid": bssid,
@@ -51,22 +52,40 @@ class DataManager(metaclass=Singleton):
         }
 
         # If already present, do not insert
-        if beacon in self.current_beacons:
+        if beacon in self.beacon_frames:
             return
 
-        self.current_beacons.append(beacon)
+        self.beacon_frames.append(beacon)
 
         self._send_data()
 
-    def register_dataframe(self, bssid, station_mac, power):
+    def register_data_frame(self, bssid, station_mac, power):
 
         if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
             return
 
-        self.current_dataframes.append(
+        self.data_frames.append(
             {
                 "bssid": bssid,
                 "station_mac": station_mac,
+                "time": int(time.time()),
+                "power": power,
+                "station_mac_vendor": self._get_mac_vendor(station_mac),
+            }
+        )
+
+        self._send_data()
+
+    def register_action_frame(self, bssid, station_mac, subtype, power):
+
+        if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
+            return
+
+        self.action_frames.append(
+            {
+                "bssid": bssid,
+                "station_mac": station_mac,
+                "subtype": subtype,
                 "time": int(time.time()),
                 "power": power,
                 "station_mac_vendor": self._get_mac_vendor(station_mac),
@@ -85,13 +104,14 @@ class DataManager(metaclass=Singleton):
 
             json = {
                 "device_id": DEVICE_ID,
-                "probe_requests": self.current_probe_requests,
-                "beacons": self.current_beacons,
-                "dataframes": self.current_dataframes
+                "probe_request_frames": self.probe_request_frames,
+                "beacon_frames": self.beacon_frames,
+                "data_frames": self.data_frames,
+                "action_frames": self.action_frames
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
-                  .format(probes=len(json["probe_requests"]), beacons=len(json["beacons"])))
+                  .format(probes=len(json["probe_request_frames"]), beacons=len(json["beacon_frames"])))
 
             # Send data to backend in the post payload
             requests.post(API_ENDPOINT, json=json)
@@ -100,9 +120,10 @@ class DataManager(metaclass=Singleton):
 
             # Reset the state
             self.last_upload_time = time.time()
-            self.current_probe_requests = []
-            self.current_beacons = []
-            self.current_dataframes = []
+            self.probe_request_frames = []
+            self.beacon_frames = []
+            self.data_frames = []
+            self.action_frames = []
 
     def _get_mac_vendor(self, mac):
         vendor = None

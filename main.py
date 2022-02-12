@@ -93,13 +93,13 @@ def packet_handler(pkt):
             print("Packet with MAC {pkt.addr2}, power {pkt.dBm_AntSignal} and SSID {ssid} ".format(
                 show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
 
-            DataManager().register_probe_request(
+            DataManager().register_probe_request_frame(
                 station_mac=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
 
         # Beacons
         elif pkt.type == 0 and pkt.subtype == 8:
             print("Beacon with power " + str(pkt.dBm_AntSignal))
-            DataManager().register_beacon(bssid=pkt.addr3, ssid=pkt.info.decode())
+            DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
 
         # Data
         elif pkt.type == 2:
@@ -111,14 +111,15 @@ def packet_handler(pkt):
             print("Data packet with power {pkt.dBm_AntSignal}".format(
                 pkt=pkt))
             
-            DataManager().register_dataframe(
+            DataManager().register_data_frame(
                 bssid=bssid,
                 station_mac=station_mac,
                 power=power
             )
 
         else:
-            print("Useless packet type {t} subtype {st}".format(t=pkt.type, st=pkt.subtype))
+            pass
+            #print("Useless packet type {t} subtype {st}".format(t=pkt.type, st=pkt.subtype))
 
 
 
