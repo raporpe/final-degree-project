@@ -27,9 +27,10 @@ class DataManager(metaclass=Singleton):
         self.probe_request_frames = []
         self.beacon_frames = []
         self.data_frames = []
+        self.action_frames = []
         #MacLookup().update_vendors()
 
-    def register_probe_request(self, station_mac, power, intent=None):
+    def register_probe_request_frame(self, station_mac, power, intent=None):
         
         self.probe_request_frames.append(
             {
@@ -43,7 +44,7 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_beacon(self, bssid, ssid):
+    def register_beacon_frame(self, bssid, ssid):
         
         beacon = {
             "bssid": bssid,
@@ -58,7 +59,7 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_dataframe(self, bssid, station_mac, power):
+    def register_data_frame(self, bssid, station_mac, power):
 
         if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
             return
@@ -67,6 +68,24 @@ class DataManager(metaclass=Singleton):
             {
                 "bssid": bssid,
                 "station_mac": station_mac,
+                "time": int(time.time()),
+                "power": power,
+                "station_mac_vendor": self._get_mac_vendor(station_mac),
+            }
+        )
+
+        self._send_data()
+
+    def register_action_frame(self, bssid, station_mac, subtype, power):
+
+        if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
+            return
+
+        self.action_frames.append(
+            {
+                "bssid": bssid,
+                "station_mac": station_mac,
+                "subtype": subtype,
                 "time": int(time.time()),
                 "power": power,
                 "station_mac_vendor": self._get_mac_vendor(station_mac),
@@ -87,7 +106,8 @@ class DataManager(metaclass=Singleton):
                 "device_id": DEVICE_ID,
                 "probe_request_frames": self.probe_request_frames,
                 "beacon_frames": self.beacon_frames,
-                "data_frames": self.data_frames
+                "data_frames": self.data_frames,
+                "action_frames": self.action_frames
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
@@ -103,6 +123,7 @@ class DataManager(metaclass=Singleton):
             self.probe_request_frames = []
             self.beacon_frames = []
             self.data_frames = []
+            self.action_frames = []
 
     def _get_mac_vendor(self, mac):
         vendor = None
