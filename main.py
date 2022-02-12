@@ -117,7 +117,13 @@ def packet_handler(pkt):
                 power=power
             )
 
-        else:
+        elif pkt.type == 1:
+            DataManager().register_action_frame(
+                bssid=bssid,
+                station_mac=station_mac,
+                powre=power,
+                subtype=pkt.subtype
+            )
             pass
             #print("Useless packet type {t} subtype {st}".format(t=pkt.type, st=pkt.subtype))
 
