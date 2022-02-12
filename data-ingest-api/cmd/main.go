@@ -90,6 +90,19 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	for _, a := range uploadedData.ActionFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO action_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		`
+
+		_, err := db.Exec(sql, a.BSSID, a.StationMAC, a.Subtype, a.Time, a.Power, a.StationMACVendor)
+		CheckError(err)
+
+	}
+
 	log.Printf("Inserted %d probes and %d beacons", len(uploadedData.ProbeRequestFrames), len(uploadedData.BeaconFrames))
 
 }
@@ -151,6 +164,7 @@ type DataFrame struct {
 type ActionFrame struct {
 	BSSID            string  `json:"bssid"`
 	StationMAC       string  `json:"station_mac"`
+	Subtype          string  `json:"subtype"`
 	Time             int64   `json:"time"`
 	Power            int64   `json:"power"`
 	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
