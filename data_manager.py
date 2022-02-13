@@ -6,7 +6,7 @@ from mac_vendor_lookup import MacLookup, VendorNotFoundError
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
 UPLOAD_PERIOD = 10
-SEND_DATA_TO_BACKEND = False
+SEND_DATA_TO_BACKEND = True
 
 # Metaclass manager for DataManager
 
@@ -105,7 +105,8 @@ class DataManager(metaclass=Singleton):
                 "addr2": addr2,
                 "addr3": addr3,
                 "addr4": addr4,
-                "subtype": subtype,
+                "time": int(time.time()),
+                "subtype": str(subtype),
                 "power": power,
             }
         )
