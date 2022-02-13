@@ -111,7 +111,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`
 
-		_, err := db.Exec(sql, m.addr1, m.addr2, m.addr3, m.addr4, m.Time, m.Subtype, m.Power)
+		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4, m.Time, m.Subtype, m.Power)
 		CheckError(err)
 
 	}
@@ -187,11 +187,11 @@ type ControlFrame struct {
 }
 
 type ManagementFrame struct {
-	addr1   string  `json:"addr1"`
-	addr2   *string `json:"addr2"`
-	addr3   *string `json:"addr3"`
-	addr4   *string `json:"addr4"`
-	Time    string  `json:"time"`
-	Subtype *string `json:"subtype"` // So that the string is nullable
+	Addr1   *string `json:"addr1"`
+	Addr2   *string `json:"addr2"`
+	Addr3   *string `json:"addr3"`
+	Addr4   *string `json:"addr4"`
+	Time    int64   `json:"time"`
+	Subtype string  `json:"subtype"` // So that the string is nullable
 	Power   int64   `json:"power"`
 }
