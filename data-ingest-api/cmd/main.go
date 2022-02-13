@@ -81,29 +81,43 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO data_frames (bssid, station_mac, time, power, station_mac_vendor)
-		VALUES ($1, $2, $3, $4, $5)
-		`
-
-		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Time, d.Power, d.StationMACVendor)
-		CheckError(err)
-
-	}
-
-	for _, a := range uploadedData.ActionFrames {
-
-		// Insert data into database
-		sql := `
-		INSERT INTO action_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
+		INSERT INTO data_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err := db.Exec(sql, a.BSSID, a.StationMAC, a.Subtype, a.Time, a.Power, a.StationMACVendor)
+		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Subtype, d.Time, d.Power, d.StationMACVendor)
 		CheckError(err)
 
 	}
 
-	log.Printf("Inserted %d probes and %d beacons", len(uploadedData.ProbeRequestFrames), len(uploadedData.BeaconFrames))
+	for _, c := range uploadedData.ControlFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO control_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		`
+
+		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, c.StationMACVendor)
+		CheckError(err)
+
+	}
+
+	for _, m := range uploadedData.ManagementFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`
+
+		_, err := db.Exec(sql, m.addr1, m.addr2, m.addr3, m.addr4, m.Time, m.Subtype, m.Power)
+		CheckError(err)
+
+	}
+
+	log.Printf("Inserted %d probes and %d beacons and %d controls", len(uploadedData.ProbeRequestFrames),
+		len(uploadedData.BeaconFrames), len(uploadedData.ControlFrames))
 
 }
 
@@ -137,7 +151,8 @@ type UploadJSON struct {
 	ProbeRequestFrames []ProbeRequestFrame `json:"probe_request_frames"`
 	BeaconFrames       []BeaconFrame       `json:"beacon_frames"`
 	DataFrames         []DataFrame         `json:"data_frames"`
-	ActionFrames       []ActionFrame       `json:"action_frames"`
+	ControlFrames      []ControlFrame      `json:"control_frames"`
+	ManagementFrames   []ManagementFrame   `json:"management_frames"`
 }
 
 type ProbeRequestFrame struct {
@@ -156,16 +171,27 @@ type BeaconFrame struct {
 type DataFrame struct {
 	BSSID            string  `json:"bssid"`
 	StationMAC       string  `json:"station_mac"`
+	Subtype          int64   `json:"subtype"`
 	Time             int64   `json:"time"`
 	Power            int64   `json:"power"`
 	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
 }
 
-type ActionFrame struct {
+type ControlFrame struct {
 	BSSID            string  `json:"bssid"`
 	StationMAC       string  `json:"station_mac"`
 	Subtype          string  `json:"subtype"`
 	Time             int64   `json:"time"`
 	Power            int64   `json:"power"`
 	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+}
+
+type ManagementFrame struct {
+	addr1   string  `json:"addr1"`
+	addr2   *string `json:"addr2"`
+	addr3   *string `json:"addr3"`
+	addr4   *string `json:"addr4"`
+	Time    string  `json:"time"`
+	Subtype *string `json:"subtype"` // So that the string is nullable
+	Power   int64   `json:"power"`
 }
