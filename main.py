@@ -41,14 +41,12 @@ def get_station_mac_from_pkt(pkt):
     # This means that the Transmission Address = Source Address
     for addr in addr_matrix:
         if "TA=SA" in addr["meaning"]:
-            print("TA=SA")
             return addr["addr"]
 
     # Is the previous one was not the case, then RA=DA is the one
     # Where Receiving Address = Destination Address
     for addr in addr_matrix:
         if "RA=DA" in addr["meaning"] and addr["addr"] != bssid:
-            print("RA=DA")
             return addr["addr"]
 
     
@@ -87,21 +85,50 @@ def get_bssid_from_pkt(pkt):
 def packet_handler(pkt):
     if pkt.haslayer(Dot11):
 
-        # Probe requests
-        if pkt.type == 0 and pkt.subtype == 4:
+        # Management frames
+        if pkt.type == 0:
+        
+            # Probe requests
+            if pkt.subtype == 4:
 
-            print("Packet with MAC {pkt.addr2}, power {pkt.dBm_AntSignal} and SSID {ssid} ".format(
-                show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
+                print("Packet with MAC {pkt.addr2}, power {pkt.dBm_AntSignal} and SSID {ssid} ".format(
+                    show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
 
-            DataManager().register_probe_request_frame(
-                station_mac=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
+                DataManager().register_probe_request_frame(
+                    station_mac=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
 
-        # Beacons
-        elif pkt.type == 0 and pkt.subtype == 8:
-            print("Beacon with power " + str(pkt.dBm_AntSignal))
-            DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
+            # Beacons
+            if pkt.subtype == 8:
+                print("Beacon with power " + str(pkt.dBm_AntSignal))
+                DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
 
-        # Data
+            
+            DataManager().register_management_frame(addr1=pkt.addr1,
+                                                    addr2=pkt.addr2,
+                                                    addr3=pkt.addr3,
+                                                    addr4=pkt.addr4,
+                                                    subtype=pkt.subtype,
+                                                    power=pkt.dBm_AntSignal)
+            
+
+        # Control frames
+        elif pkt.type == 1:
+
+            bssid = pkt.addr1
+            station_mac = pkt.addr1
+            power = pkt.dBm_AntSignal
+
+            DataManager().register_control_frame(
+                bssid=bssid,
+                station_mac=station_mac,
+                power=power,
+                subtype=str(pkt.subtype)
+            )
+            
+            print("Control frame subtype " + str(pkt.subtype))
+
+
+        # Data frames
         elif pkt.type == 2:
 
             bssid = get_bssid_from_pkt(pkt)
@@ -114,12 +141,9 @@ def packet_handler(pkt):
             DataManager().register_data_frame(
                 bssid=bssid,
                 station_mac=station_mac,
-                power=power
+                power=power,
+                subtype=pkt.subtype
             )
-
-        else:
-            pass
-            #print("Useless packet type {t} subtype {st}".format(t=pkt.type, st=pkt.subtype))
 
 
 
