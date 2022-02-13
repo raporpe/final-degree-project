@@ -29,6 +29,7 @@ class DataManager(metaclass=Singleton):
         self.beacon_frames = []
         self.data_frames = []
         self.control_frames = []
+        self.management_frames = []
         #MacLookup().update_vendors()
 
     def register_probe_request_frame(self, station_mac, power, intent=None):
@@ -96,6 +97,21 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
+    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power):
+
+        self.management_frames.append(
+            {
+                "addr1": addr1,
+                "addr2": addr2,
+                "addr3": addr3,
+                "addr4": addr4,
+                "subtype": subtype,
+                "power": power,
+            }
+        )
+
+
+
     # Sends the data to the backend
     def _send_data(self):
 
@@ -109,7 +125,8 @@ class DataManager(metaclass=Singleton):
                 "probe_request_frames": self.probe_request_frames,
                 "beacon_frames": self.beacon_frames,
                 "data_frames": self.data_frames,
-                "control_frames": self.control_frames
+                "control_frames": self.control_frames,
+                "management_frames": self.management_frames
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
@@ -127,6 +144,7 @@ class DataManager(metaclass=Singleton):
             self.beacon_frames = []
             self.data_frames = []
             self.control_frames = []
+            self.management_frames = []
 
     def _get_mac_vendor(self, mac):
         vendor = None

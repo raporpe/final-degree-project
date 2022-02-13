@@ -102,6 +102,14 @@ def packet_handler(pkt):
                 print("Beacon with power " + str(pkt.dBm_AntSignal))
                 DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
 
+            
+            DataManager().register_management_frame(addr1=pkt.addr1,
+                                                    addr2=pkt.addr2,
+                                                    addr3=pkt.addr3,
+                                                    addr4=pkt.addr4,
+                                                    subtype=pkt.subtype,
+                                                    power=pkt.dBm_AntSignal)
+            
 
         # Control frames
         elif pkt.type == 1:
