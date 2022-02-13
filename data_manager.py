@@ -6,6 +6,7 @@ from mac_vendor_lookup import MacLookup, VendorNotFoundError
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
 UPLOAD_PERIOD = 10
+SEND_DATA_TO_BACKEND = False
 
 # Metaclass manager for DataManager
 
@@ -59,7 +60,7 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_data_frame(self, bssid, station_mac, power):
+    def register_data_frame(self, bssid, station_mac, power, subtype):
 
         if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
             return
@@ -70,6 +71,7 @@ class DataManager(metaclass=Singleton):
                 "station_mac": station_mac,
                 "time": int(time.time()),
                 "power": power,
+                "subtype": subtype,
                 "station_mac_vendor": self._get_mac_vendor(station_mac),
             }
         )
@@ -107,14 +109,15 @@ class DataManager(metaclass=Singleton):
                 "probe_request_frames": self.probe_request_frames,
                 "beacon_frames": self.beacon_frames,
                 "data_frames": self.data_frames,
-                "action_frames": self.control_frames
+                "control_frames": self.control_frames
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
                   .format(probes=len(json["probe_request_frames"]), beacons=len(json["beacon_frames"])))
 
-            # Send data to backend in the post payload
-            requests.post(API_ENDPOINT, json=json)
+            # Send data to backend in the post payload in json format
+            if SEND_DATA_TO_BACKEND:
+                requests.post(API_ENDPOINT, json=json)
 
             print("Uploaded data to backend")
 
@@ -127,7 +130,6 @@ class DataManager(metaclass=Singleton):
 
     def _get_mac_vendor(self, mac):
         vendor = None
-        print(mac)
         try:
             vendor = MacLookup().lookup(mac)
         except VendorNotFoundError:
