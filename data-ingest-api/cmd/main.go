@@ -103,6 +103,19 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	for _, m := range uploadedData.ManagementFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`
+
+		_, err := db.Exec(sql, m.addr1, m.addr2, m.addr3, m.addr4, m.Time, m.Subtype, m.Power)
+		CheckError(err)
+
+	}
+
 	log.Printf("Inserted %d probes and %d beacons and %d controls", len(uploadedData.ProbeRequestFrames),
 		len(uploadedData.BeaconFrames), len(uploadedData.ControlFrames))
 
@@ -139,6 +152,7 @@ type UploadJSON struct {
 	BeaconFrames       []BeaconFrame       `json:"beacon_frames"`
 	DataFrames         []DataFrame         `json:"data_frames"`
 	ControlFrames      []ControlFrame      `json:"control_frames"`
+	ManagementFrames   []ManagementFrame   `json:"management_frames"`
 }
 
 type ProbeRequestFrame struct {
@@ -170,4 +184,14 @@ type ControlFrame struct {
 	Time             int64   `json:"time"`
 	Power            int64   `json:"power"`
 	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+}
+
+type ManagementFrame struct {
+	addr1   string  `json:"addr1"`
+	addr2   *string `json:"addr2"`
+	addr3   *string `json:"addr3"`
+	addr4   *string `json:"addr4"`
+	Time    string  `json:"time"`
+	Subtype *string `json:"subtype"` // So that the string is nullable
+	Power   int64   `json:"power"`
 }
