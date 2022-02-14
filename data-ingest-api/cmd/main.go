@@ -12,9 +12,11 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/gorilla/mux"
+	"github.com/klauspost/oui"
 )
 
 var db *sql.DB
+var macDB oui.StaticDB
 
 func main() {
 
@@ -27,6 +29,10 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
+
+	var err error
+	macDB, err = oui.OpenStaticFile("oui.txt")
+	CheckError(err)
 
 	log.Println("Starting server...")
 
@@ -59,7 +65,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, r.StationMACVendor)
+		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, GetVendor(r.StationMAC))
 		CheckError(err)
 
 	}
@@ -69,7 +75,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// Insert data into database
 		sql := `
 		INSERT INTO beacon_frames (bssid, ssid, device_id)
-		VALUES ($1, $2, $3)
+		VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
 		`
 
 		_, err := db.Exec(sql, b.BSSID, b.SSID, uploadedData.DeviceID)
@@ -85,7 +91,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Subtype, d.Time, d.Power, d.StationMACVendor)
+		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Subtype, d.Time, d.Power, GetVendor(d.StationMAC))
 		CheckError(err)
 
 	}
@@ -98,7 +104,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, c.StationMACVendor)
+		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, GetVendor(c.StationMAC))
 		CheckError(err)
 
 	}
@@ -149,9 +155,19 @@ func GetDB() *sql.DB {
 
 }
 
-func CheckError(err error) {
+func GetVendor(mac string) *string {
+	result, err := macDB.Query(mac)
 	if err != nil {
-		log.Println(err)
+		return nil
+	} else {
+		return &result.Manufacturer
+	}
+}
+
+func CheckError(err error) {
+
+	if err != nil {
+		log.Print(err)
 	}
 }
 
