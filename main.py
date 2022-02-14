@@ -91,14 +91,18 @@ def packet_handler(pkt):
             # Probe requests
             if pkt.subtype == 4:
 
-                print("Packet with MAC {pkt.addr2}, power {pkt.dBm_AntSignal} and SSID {ssid} ".format(
+                print("Probe request with MAC {pkt.addr2} and ssid {ssid}".format(
                     show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
 
                 DataManager().register_probe_request_frame(
                     station_mac=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
 
+            # Probe request responses
+            elif pkt.subtype == 5:
+                pass
+            
             # Beacons
-            if pkt.subtype == 8:
+            elif pkt.subtype == 8:
                 print("Beacon with power " + str(pkt.dBm_AntSignal))
                 DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
 
@@ -135,7 +139,7 @@ def packet_handler(pkt):
             station_mac = get_station_mac_from_pkt(pkt)
             power = pkt.dBm_AntSignal
 
-            print("Data packet with power {pkt.dBm_AntSignal}".format(
+            print("Data frame with power {pkt.dBm_AntSignal}".format(
                 pkt=pkt))
             
             DataManager().register_data_frame(
@@ -149,7 +153,7 @@ def packet_handler(pkt):
 
 def start_sniffer():
     try:
-        sniff(iface="wlan1mon", prn=packet_handler, store=0)
+        sniff(iface="wlan1", prn=packet_handler, store=0)
     except Exception as e:
         print("--------")
         traceback.print_exc()
