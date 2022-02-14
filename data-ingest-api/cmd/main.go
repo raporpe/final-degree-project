@@ -55,6 +55,12 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Received data from " + uploadedData.DeviceID)
 
+	go StoreData(&uploadedData)
+
+}
+
+func StoreData(uploadedData *UploadJSON) {
+
 	db := GetDB()
 
 	for _, r := range uploadedData.ProbeRequestFrames {
