@@ -1,6 +1,4 @@
-from audioop import add
-from sunau import AUDIO_FILE_ENCODING_LINEAR_24
-from scapy.all import Dot11, Dot11ProbeReq, Dot11Beacon, sniff
+from scapy.all import Dot11, Dot11Elt, sniff
 import traceback
 from data_manager import DataManager
 
