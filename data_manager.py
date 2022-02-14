@@ -2,7 +2,6 @@ import time
 import requests
 from mac_vendor_lookup import MacLookup, VendorNotFoundError
 
-
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
 UPLOAD_PERIOD = 10
@@ -30,10 +29,10 @@ class DataManager(metaclass=Singleton):
         self.data_frames = []
         self.control_frames = []
         self.management_frames = []
-        #MacLookup().update_vendors()
+        # MacLookup().update_vendors()
 
     def register_probe_request_frame(self, station_mac, power, intent=None):
-        
+
         self.probe_request_frames.append(
             {
                 "station_mac": station_mac,
@@ -47,7 +46,7 @@ class DataManager(metaclass=Singleton):
         self._send_data()
 
     def register_beacon_frame(self, bssid, ssid):
-        
+
         beacon = {
             "bssid": bssid,
             "ssid": ssid
@@ -58,7 +57,6 @@ class DataManager(metaclass=Singleton):
             return
 
         self.beacon_frames.append(beacon)
-
 
     def register_data_frame(self, bssid, station_mac, power, subtype):
 
@@ -108,9 +106,8 @@ class DataManager(metaclass=Singleton):
             }
         )
 
-
-
     # Sends the data to the backend
+
     def _send_data(self):
 
         # Only send data every N seconds
@@ -150,12 +147,10 @@ class DataManager(metaclass=Singleton):
             vendor = MacLookup().lookup(mac)
         except VendorNotFoundError:
             pass
-        
+
         return vendor
 
     def _validate_mac(self, mac):
         return (mac != None
                 and mac != "ff:ff:ff:ff:ff:ff"
                 and mac != "00:00:00:00:00:00")
-
-
