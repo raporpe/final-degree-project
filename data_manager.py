@@ -1,6 +1,5 @@
 import time
 import requests
-from mac_vendor_lookup import MacLookup, VendorNotFoundError
 
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
@@ -39,7 +38,6 @@ class DataManager(metaclass=Singleton):
                 "intent": intent,
                 "time": int(time.time()),
                 "power": power,
-                "station_mac_vendor": self._get_mac_vendor(station_mac)
             }
         )
 
@@ -70,7 +68,6 @@ class DataManager(metaclass=Singleton):
                 "time": int(time.time()),
                 "power": power,
                 "subtype": subtype,
-                "station_mac_vendor": self._get_mac_vendor(station_mac),
             }
         )
 
@@ -88,7 +85,6 @@ class DataManager(metaclass=Singleton):
                 "subtype": subtype,
                 "time": int(time.time()),
                 "power": power,
-                "station_mac_vendor": self._get_mac_vendor(station_mac),
             }
         )
 
@@ -141,14 +137,6 @@ class DataManager(metaclass=Singleton):
             self.control_frames = []
             self.management_frames = []
 
-    def _get_mac_vendor(self, mac):
-        vendor = None
-        try:
-            vendor = MacLookup().lookup(mac)
-        except VendorNotFoundError:
-            pass
-
-        return vendor
 
     def _validate_mac(self, mac):
         return (mac != None
