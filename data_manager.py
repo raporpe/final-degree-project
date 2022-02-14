@@ -59,7 +59,6 @@ class DataManager(metaclass=Singleton):
 
         self.beacon_frames.append(beacon)
 
-        self._send_data()
 
     def register_data_frame(self, bssid, station_mac, power, subtype):
 
@@ -94,8 +93,6 @@ class DataManager(metaclass=Singleton):
                 "station_mac_vendor": self._get_mac_vendor(station_mac),
             }
         )
-
-        self._send_data()
 
     def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power):
 
