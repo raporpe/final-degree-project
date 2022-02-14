@@ -116,9 +116,17 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	log.Printf("Inserted \n %d probe frames\n %d beacon frames\n %d control frames\n %d data frames\n %d management frames ",
-		len(uploadedData.ProbeRequestFrames), len(uploadedData.BeaconFrames), len(uploadedData.ControlFrames),
-		len(uploadedData.DataFrames), len(uploadedData.ManagementFrames))
+	probeRequests := len(uploadedData.ProbeRequestFrames)
+	beacons := len(uploadedData.BeaconFrames)
+	controls := len(uploadedData.ControlFrames)
+	datas := len(uploadedData.DataFrames)
+	managements := len(uploadedData.ManagementFrames)
+	total := probeRequests + beacons + controls + datas + managements
+
+	log.Printf("Inserted \n %d probe frames\n %d beacon frames\n %d control frames\n %d data frames\n %d management frames \nTotal: %d",
+		probeRequests, beacons, controls,
+		datas, managements,
+		total)
 
 }
 
