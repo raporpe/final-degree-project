@@ -181,11 +181,10 @@ type UploadJSON struct {
 }
 
 type ProbeRequestFrame struct {
-	StationMAC       string  `json:"station_mac"`
-	Intent           *string `json:"intent"`
-	Time             int64   `json:"time"`
-	Power            int64   `json:"power"`
-	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+	StationMAC string  `json:"station_mac"`
+	Intent     *string `json:"intent"`
+	Time       int64   `json:"time"`
+	Power      int64   `json:"power"`
 }
 
 type BeaconFrame struct {
@@ -194,21 +193,19 @@ type BeaconFrame struct {
 }
 
 type DataFrame struct {
-	BSSID            string  `json:"bssid"`
-	StationMAC       string  `json:"station_mac"`
-	Subtype          int64   `json:"subtype"`
-	Time             int64   `json:"time"`
-	Power            int64   `json:"power"`
-	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+	BSSID      string `json:"bssid"`
+	StationMAC string `json:"station_mac"`
+	Subtype    int64  `json:"subtype"`
+	Time       int64  `json:"time"`
+	Power      int64  `json:"power"`
 }
 
 type ControlFrame struct {
-	BSSID            string  `json:"bssid"`
-	StationMAC       string  `json:"station_mac"`
-	Subtype          string  `json:"subtype"`
-	Time             int64   `json:"time"`
-	Power            int64   `json:"power"`
-	StationMACVendor *string `json:"station_mac_vendor"` // So that the string is nullable
+	BSSID      string `json:"bssid"`
+	StationMAC string `json:"station_mac"`
+	Subtype    string `json:"subtype"`
+	Time       int64  `json:"time"`
+	Power      int64  `json:"power"`
 }
 
 type ManagementFrame struct {
