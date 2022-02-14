@@ -2,7 +2,6 @@ import time
 import requests
 from mac_vendor_lookup import MacLookup, VendorNotFoundError
 
-
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
 UPLOAD_PERIOD = 10

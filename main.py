@@ -1,84 +1,42 @@
 from audioop import add
+from sunau import AUDIO_FILE_ENCODING_LINEAR_24
 from scapy.all import Dot11, Dot11ProbeReq, Dot11Beacon, sniff
 import traceback
 from data_manager import DataManager
-from mac_vendor_lookup import MacLookup, VendorNotFoundError
-
 
 # Get the mac address of the wireless mobile device
 # that we are interested in targeting
 def get_station_mac_from_pkt(pkt):
 
-    # If the address 4 has meaning, then the packet is from a wireless bridge
-    # This means that no mobile wireless device is involved
-    #print("Meaning " + str(pkt[Dot11].address_meaning(4)))
-    if pkt[Dot11].address_meaning(4) != None:
+    DS = pkt.FCfield & 0x3
+    to_DS = DS & 0x1 != 0
+    from_DS = DS & 0x2 != 0
+
+    if not to_DS and not from_DS:
+        return pkt.addr2
+    elif not to_DS and from_DS:
+        return pkt.addr1
+    elif to_DS and not from_DS:
+        return pkt.addr2
+    elif to_DS and from_DS:
         return None
-
-
-    addr_matrix = [
-        {
-            "meaning": pkt[Dot11].address_meaning(1),
-            "addr": pkt.addr1
-        },
-        {
-            "meaning": pkt[Dot11].address_meaning(2),
-            "addr": pkt.addr2
-        },
-        {
-            "meaning": pkt[Dot11].address_meaning(3),
-            "addr": pkt.addr3
-        }
-    ]
-
-    # Detect the BSSID
-    bssid = None
-    for addr in addr_matrix:
-        if "BSSID" in addr["meaning"]:
-            bssid = addr["addr"]
-
-    # Get addr where TA=SA
-    # This means that the Transmission Address = Source Address
-    for addr in addr_matrix:
-        if "TA=SA" in addr["meaning"]:
-            return addr["addr"]
-
-    # Is the previous one was not the case, then RA=DA is the one
-    # Where Receiving Address = Destination Address
-    for addr in addr_matrix:
-        if "RA=DA" in addr["meaning"] and addr["addr"] != bssid:
-            return addr["addr"]
-
-    
-    return None
-
 
 
 # Get the mac address of the bssid (ap mac address)
 def get_bssid_from_pkt(pkt):
 
-    addr_matrix = [
-        {
-            "meaning": pkt[Dot11].address_meaning(1),
-            "addr": pkt.addr1
-        },
-        {
-            "meaning": pkt[Dot11].address_meaning(2),
-            "addr": pkt.addr2
-        },
-        {
-            "meaning": pkt[Dot11].address_meaning(3),
-            "addr": pkt.addr3
-        },
-        {
-            "meaning": pkt[Dot11].address_meaning(4),
-            "addr": pkt.addr4
-        }
-    ]
+    DS = pkt.FCfield & 0x3
+    to_DS = DS & 0x1 != 0
+    from_DS = DS & 0x2 != 0
 
-    for addr in addr_matrix:
-        if "BSSID" in addr["meaning"]:
-            return addr["addr"]
+    if not to_DS and not from_DS:
+        return pkt.addr3
+    elif not to_DS and from_DS:
+        return pkt.addr2
+    elif to_DS and not from_DS:
+        return pkt.addr1
+    elif to_DS and from_DS:
+        return None
 
     
 
