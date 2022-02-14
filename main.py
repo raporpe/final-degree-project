@@ -6,6 +6,8 @@ from data_manager import DataManager
 
 # Get the mac address of the wireless mobile device
 # that we are interested in targeting
+
+
 def get_station_mac_from_pkt(pkt):
 
     DS = pkt.FCfield & 0x3
@@ -38,14 +40,13 @@ def get_bssid_from_pkt(pkt):
     elif to_DS and from_DS:
         return None
 
-    
 
 def packet_handler(pkt):
     if pkt.haslayer(Dot11):
 
         # Management frames
         if pkt.type == 0:
-        
+
             # Probe requests
             if pkt.subtype == 4:
 
@@ -58,20 +59,18 @@ def packet_handler(pkt):
             # Probe request responses
             elif pkt.subtype == 5:
                 pass
-            
+
             # Beacons
             elif pkt.subtype == 8:
                 print("Beacon with power " + str(pkt.dBm_AntSignal))
                 DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
 
-            
             DataManager().register_management_frame(addr1=pkt.addr1,
                                                     addr2=pkt.addr2,
                                                     addr3=pkt.addr3,
                                                     addr4=pkt.addr4,
                                                     subtype=pkt.subtype,
                                                     power=pkt.dBm_AntSignal)
-            
 
         # Control frames
         elif pkt.type == 1:
@@ -86,9 +85,8 @@ def packet_handler(pkt):
                 power=power,
                 subtype=str(pkt.subtype)
             )
-            
-            print("Control frame subtype " + str(pkt.subtype))
 
+            print("Control frame subtype " + str(pkt.subtype))
 
         # Data frames
         elif pkt.type == 2:
@@ -99,14 +97,13 @@ def packet_handler(pkt):
 
             print("Data frame with power {pkt.dBm_AntSignal}".format(
                 pkt=pkt))
-            
+
             DataManager().register_data_frame(
                 bssid=bssid,
                 station_mac=station_mac,
                 power=power,
                 subtype=pkt.subtype
             )
-
 
 
 def start_sniffer():
