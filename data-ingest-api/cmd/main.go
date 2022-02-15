@@ -36,22 +36,18 @@ func main() {
 
 	log.Println("Starting server...")
 
-	log.Fatal(server.ListenAndServe())
+	CheckError(server.ListenAndServe())
 
 }
 
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckError(err)
 
 	var uploadedData UploadJSON
 
 	err = json.Unmarshal(body, &uploadedData)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckError(err)
 
 	log.Println("Received data from " + uploadedData.DeviceID)
 
