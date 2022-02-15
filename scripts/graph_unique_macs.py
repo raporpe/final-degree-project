@@ -6,7 +6,8 @@ import time
 import datetime
 
 
-conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
+conn = psycopg2.connect(
+    "host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
 cur = conn.cursor()
 
 
@@ -30,25 +31,26 @@ for t in range(start_time, end_time, 3600):
     print(fake_mac_number)
     fake_macs.append(fake_mac_number)
 
-real_macs = pd.DataFrame({
+
+df = pd.DataFrame({
     "time": unix_time,
-    "data": real_macs
+    "fake_macs": fake_macs,
+    "real_macs": real_macs
 })
 
-fake_macs = pd.DataFrame({
-    "time": unix_time,
-    "data": fake_macs
-})
-
-real_macs.time = real_macs.time.apply(lambda d: datetime.datetime.fromtimestamp(int(d)).strftime('%d %a - %Hh'))
-fake_macs.time = fake_macs.time.apply(lambda d: datetime.datetime.fromtimestamp(int(d)).strftime('%d %a - %Hh'))
-
+df.time = df.time.apply(lambda d: datetime.datetime.fromtimestamp(
+    int(d)).strftime('%d %a - %Hh'))
 
 tick = []
 
-fig = px.line(real_macs, x="time", y="data")
-fig.write_image("real_macs.png")
+fig = px.line(df, x="time", y=["fake_macs", "real_macs"], title="Real macs")
 
+dates = df["time"].to_list()
+dates = set([i[:6] for i in dates])
 
-fig = px.line(fake_macs, x="time", y="data")
-fig.write_image("fake_macs.png")
+for date in dates:
+    fig.add_vrect(x0=date+" - 00h", x1=date+" - 08h",
+                  annotation_text="night", annotation_position="top left",
+                  fillcolor="blue", opacity=0.25, line_width=0)
+
+fig.show()
