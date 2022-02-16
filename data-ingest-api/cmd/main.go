@@ -36,22 +36,18 @@ func main() {
 
 	log.Println("Starting server...")
 
-	log.Fatal(server.ListenAndServe())
+	CheckError(server.ListenAndServe())
 
 }
 
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckError(err)
 
 	var uploadedData UploadJSON
 
 	err = json.Unmarshal(body, &uploadedData)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckError(err)
 
 	log.Println("Received data from " + uploadedData.DeviceID)
 
@@ -72,6 +68,20 @@ func StoreData(uploadedData *UploadJSON) {
 		`
 
 		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, GetVendor(r.StationMAC))
+		CheckError(err)
+
+	}
+
+	// Insert probe responses
+	for _, r := range uploadedData.ProbeReponseFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO probe_response_frames (device_id, bssid, ssid, station_mac, station_mac_vendor, time, power)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`
+
+		_, err := db.Exec(sql, uploadedData.DeviceID, r.BSSID, r.SSID, r.StationMAC, GetVendor(r.StationMAC), r.Time, r.Power)
 		CheckError(err)
 
 	}
@@ -106,11 +116,11 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO control_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO control_frames (bssid, station_mac, subtype, time, power, station_mac_vendor, from_ds, to_ds)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
-		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, GetVendor(c.StationMAC))
+		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, GetVendor(c.StationMAC), c.FromDS, c.ToDS)
 		CheckError(err)
 
 	}
@@ -119,11 +129,14 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power, from_ds, to_ds, station_mac, station_mac_vendor)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		`
 
-		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4, m.Time, m.Subtype, m.Power)
+		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4,
+			m.Time, m.Subtype, m.Power, m.FromDS, m.ToDS, m.StationMAC,
+			GetVendor(m.StationMAC))
+
 		CheckError(err)
 
 	}
@@ -178,12 +191,13 @@ func CheckError(err error) {
 }
 
 type UploadJSON struct {
-	DeviceID           string              `json:"device_id"`
-	ProbeRequestFrames []ProbeRequestFrame `json:"probe_request_frames"`
-	BeaconFrames       []BeaconFrame       `json:"beacon_frames"`
-	DataFrames         []DataFrame         `json:"data_frames"`
-	ControlFrames      []ControlFrame      `json:"control_frames"`
-	ManagementFrames   []ManagementFrame   `json:"management_frames"`
+	DeviceID           string               `json:"device_id"`
+	ProbeRequestFrames []ProbeRequestFrame  `json:"probe_request_frames"`
+	BeaconFrames       []BeaconFrame        `json:"beacon_frames"`
+	DataFrames         []DataFrame          `json:"data_frames"`
+	ControlFrames      []ControlFrame       `json:"control_frames"`
+	ManagementFrames   []ManagementFrame    `json:"management_frames"`
+	ProbeReponseFrames []ProbeResponseFrame `json:"probe_response_frames"`
 }
 
 type ProbeRequestFrame struct {
@@ -191,6 +205,14 @@ type ProbeRequestFrame struct {
 	Intent     *string `json:"intent"`
 	Time       int64   `json:"time"`
 	Power      int64   `json:"power"`
+}
+
+type ProbeResponseFrame struct {
+	BSSID      string `json:"bssid"`
+	SSID       string `json:"ssid"`
+	StationMAC string `json:"station_mac"`
+	Time       int64  `json:"time"`
+	Power      int64  `json:"power"`
 }
 
 type BeaconFrame struct {
@@ -212,14 +234,19 @@ type ControlFrame struct {
 	Subtype    string `json:"subtype"`
 	Time       int64  `json:"time"`
 	Power      int64  `json:"power"`
+	FromDS     bool   `json:"from_DS"`
+	ToDS       bool   `json:"to_DS"`
 }
 
 type ManagementFrame struct {
-	Addr1   *string `json:"addr1"`
-	Addr2   *string `json:"addr2"`
-	Addr3   *string `json:"addr3"`
-	Addr4   *string `json:"addr4"`
-	Time    int64   `json:"time"`
-	Subtype string  `json:"subtype"` // So that the string is nullable
-	Power   int64   `json:"power"`
+	Addr1      *string `json:"addr1"`
+	Addr2      *string `json:"addr2"`
+	Addr3      *string `json:"addr3"`
+	Addr4      *string `json:"addr4"`
+	Time       int64   `json:"time"`
+	Subtype    string  `json:"subtype"` // So that the string is nullable
+	Power      int64   `json:"power"`
+	StationMAC string  `json:"station_mac"`
+	FromDS     bool    `json:"from_DS"`
+	ToDS       bool    `json:"to_DS"`
 }
