@@ -57,7 +57,15 @@ def packet_handler(pkt):
 
             # Probe request responses
             elif pkt.subtype == 5:
-                pass
+                print("Probe response with MAC {pkt.addr2} and ssid {ssid}".format(
+                    show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
+
+                DataManager().register_probe_response_frame(
+                    bssid=pkt.addr3,
+                    ssid=pkt.info.decode(),
+                    station_mac=pkt.addr1,
+                    power=pkt.dBm_AntSignal
+                )
 
             # Beacons
             elif pkt.subtype == 8:
