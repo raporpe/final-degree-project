@@ -1,7 +1,7 @@
 from scapy.all import Dot11, Dot11Elt, sniff
 import traceback
 from data_manager import DataManager
-
+import time
 # Get the mac address of the wireless mobile device
 # that we are interested in targeting
 
@@ -124,6 +124,7 @@ def start_sniffer():
     except Exception as e:
         print("--------")
         traceback.print_exc()
+        time.sleep(1)
         start_sniffer()
 
 
