@@ -115,11 +115,14 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power, from_ds, to_ds, station_mac)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power, from_ds, to_ds, station_mac, station_mac_vendor)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		`
 
-		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4, m.Time, m.Subtype, m.Power, m.FromDS, m.ToDS, m.StationMAC)
+		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4,
+			m.Time, m.Subtype, m.Power, m.FromDS, m.ToDS, m.StationMAC,
+			GetVendor(m.StationMAC))
+
 		CheckError(err)
 
 	}
