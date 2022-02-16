@@ -72,6 +72,20 @@ func StoreData(uploadedData *UploadJSON) {
 
 	}
 
+	// Insert probe responses
+	for _, r := range uploadedData.ProbeReponseFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO probe_response_frames (device_id, bssid, ssid, station_mac, station_mac_vendor, time, power)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`
+
+		_, err := db.Exec(sql, uploadedData.DeviceID, r.BSSID, r.SSID, r.StationMAC, GetVendor(r.StationMAC), r.Time, r.Power)
+		CheckError(err)
+
+	}
+
 	for _, b := range uploadedData.BeaconFrames {
 
 		// Insert data into database
@@ -177,12 +191,13 @@ func CheckError(err error) {
 }
 
 type UploadJSON struct {
-	DeviceID           string              `json:"device_id"`
-	ProbeRequestFrames []ProbeRequestFrame `json:"probe_request_frames"`
-	BeaconFrames       []BeaconFrame       `json:"beacon_frames"`
-	DataFrames         []DataFrame         `json:"data_frames"`
-	ControlFrames      []ControlFrame      `json:"control_frames"`
-	ManagementFrames   []ManagementFrame   `json:"management_frames"`
+	DeviceID           string               `json:"device_id"`
+	ProbeRequestFrames []ProbeRequestFrame  `json:"probe_request_frames"`
+	BeaconFrames       []BeaconFrame        `json:"beacon_frames"`
+	DataFrames         []DataFrame          `json:"data_frames"`
+	ControlFrames      []ControlFrame       `json:"control_frames"`
+	ManagementFrames   []ManagementFrame    `json:"management_frames"`
+	ProbeReponseFrames []ProbeResponseFrame `json:"probe_response_frames"`
 }
 
 type ProbeRequestFrame struct {
@@ -190,6 +205,14 @@ type ProbeRequestFrame struct {
 	Intent     *string `json:"intent"`
 	Time       int64   `json:"time"`
 	Power      int64   `json:"power"`
+}
+
+type ProbeResponseFrame struct {
+	BSSID      string `json:"bssid"`
+	SSID       string `json:"ssid"`
+	StationMAC string `json:"station_mac"`
+	Time       int64  `json:"time"`
+	Power      int64  `json:"power"`
 }
 
 type BeaconFrame struct {
