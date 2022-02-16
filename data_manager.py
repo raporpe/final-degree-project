@@ -28,7 +28,7 @@ class DataManager(metaclass=Singleton):
         self.data_frames = []
         self.control_frames = []
         self.management_frames = []
-        # MacLookup().update_vendors()
+        self.probe_response_frames = [] 
 
     def register_probe_request_frame(self, station_mac, power, intent=None):
 
@@ -36,6 +36,20 @@ class DataManager(metaclass=Singleton):
             {
                 "station_mac": station_mac,
                 "intent": intent,
+                "time": int(time.time()),
+                "power": power,
+            }
+        )
+
+        self._send_data()
+
+    def register_probe_response_frame(self, bssid, ssid, station_mac, power):
+
+        self.probe_response_frames.append(
+            {
+                "bssid": bssid,
+                "ssid": ssid,
+                "station_mac": station_mac,
                 "time": int(time.time()),
                 "power": power,
             }
@@ -73,7 +87,7 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_control_frame(self, bssid, station_mac, subtype, power):
+    def register_control_frame(self, bssid, station_mac, subtype, power, from_DS, to_DS):
 
         if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
             return
@@ -85,10 +99,12 @@ class DataManager(metaclass=Singleton):
                 "subtype": subtype,
                 "time": int(time.time()),
                 "power": power,
+                "from_DS": from_DS,
+                "to_DS": to_DS
             }
         )
 
-    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power):
+    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power, from_DS, to_DS, station_mac):
 
         self.management_frames.append(
             {
@@ -99,6 +115,9 @@ class DataManager(metaclass=Singleton):
                 "time": int(time.time()),
                 "subtype": str(subtype),
                 "power": power,
+                "from_DS": from_DS,
+                "to_DS": to_DS,
+                "station_mac": station_mac
             }
         )
 
@@ -114,10 +133,11 @@ class DataManager(metaclass=Singleton):
             json = {
                 "device_id": DEVICE_ID,
                 "probe_request_frames": self.probe_request_frames,
+                "probe_response_frames": self.probe_response_frames,
                 "beacon_frames": self.beacon_frames,
                 "data_frames": self.data_frames,
                 "control_frames": self.control_frames,
-                "management_frames": self.management_frames
+                "management_frames": self.management_frames,
             }
 
             print("Sending data to backend: {probes} probe requests and {beacons} beacons"
@@ -136,6 +156,7 @@ class DataManager(metaclass=Singleton):
             self.data_frames = []
             self.control_frames = []
             self.management_frames = []
+            self.probe_response_frames = [] 
 
 
     def _validate_mac(self, mac):
