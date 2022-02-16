@@ -102,11 +102,11 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO control_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO control_frames (bssid, station_mac, subtype, time, power, station_mac_vendor, from_ds, to_ds)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
-		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, GetVendor(c.StationMAC))
+		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, GetVendor(c.StationMAC), c.FromDS, c.ToDS)
 		CheckError(err)
 
 	}
@@ -115,11 +115,11 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power, from_ds, to_ds, station_mac)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		`
 
-		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4, m.Time, m.Subtype, m.Power)
+		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4, m.Time, m.Subtype, m.Power, m.FromDS, m.ToDS, m.StationMAC)
 		CheckError(err)
 
 	}
@@ -208,14 +208,19 @@ type ControlFrame struct {
 	Subtype    string `json:"subtype"`
 	Time       int64  `json:"time"`
 	Power      int64  `json:"power"`
+	FromDS     bool   `json:"from_DS"`
+	ToDS       bool   `json:"to_DS"`
 }
 
 type ManagementFrame struct {
-	Addr1   *string `json:"addr1"`
-	Addr2   *string `json:"addr2"`
-	Addr3   *string `json:"addr3"`
-	Addr4   *string `json:"addr4"`
-	Time    int64   `json:"time"`
-	Subtype string  `json:"subtype"` // So that the string is nullable
-	Power   int64   `json:"power"`
+	Addr1      *string `json:"addr1"`
+	Addr2      *string `json:"addr2"`
+	Addr3      *string `json:"addr3"`
+	Addr4      *string `json:"addr4"`
+	Time       int64   `json:"time"`
+	Subtype    string  `json:"subtype"` // So that the string is nullable
+	Power      int64   `json:"power"`
+	StationMAC string  `json:"station_mac"`
+	FromDS     bool    `json:"from_DS"`
+	ToDS       bool    `json:"to_DS"`
 }
