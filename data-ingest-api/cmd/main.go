@@ -116,11 +116,12 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO control_frames (bssid, station_mac, subtype, time, power, station_mac_vendor, from_ds, to_ds)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO control_frames (addr1, addr2, addr3, addr4, time, subtype, power)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`
 
-		_, err := db.Exec(sql, c.BSSID, c.StationMAC, c.Subtype, c.Time, c.Power, GetVendor(c.StationMAC), c.FromDS, c.ToDS)
+		_, err := db.Exec(sql, c.Addr1, c.Addr2, c.Addr3, c.Addr4,
+			c.Time, c.Subtype, c.Power)
 		CheckError(err)
 
 	}
@@ -129,27 +130,28 @@ func StoreData(uploadedData *UploadJSON) {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power, from_ds, to_ds, station_mac, station_mac_vendor)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`
 
 		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4,
-			m.Time, m.Subtype, m.Power, m.FromDS, m.ToDS, m.StationMAC,
-			GetVendor(m.StationMAC))
+			m.Time, m.Subtype, m.Power)
 
 		CheckError(err)
 
 	}
 
 	probeRequests := len(uploadedData.ProbeRequestFrames)
+	probeResponses := len(uploadedData.ProbeReponseFrames)
 	beacons := len(uploadedData.BeaconFrames)
 	controls := len(uploadedData.ControlFrames)
 	datas := len(uploadedData.DataFrames)
 	managements := len(uploadedData.ManagementFrames)
-	total := probeRequests + beacons + controls + datas + managements
+	total := probeRequests + probeResponses + beacons + controls + datas + managements
 
-	log.Printf("Inserted \n %d probe frames\n %d beacon frames\n %d control frames\n %d data frames\n %d management frames \nTotal: %d",
-		probeRequests, beacons, controls,
+	log.Printf("Inserted \n %d probe request frames \n %d probe response frames \n %d beacon frames\n %d control frames\n %d data frames\n %d management frames \nTotal: %d",
+		probeResponses, probeRequests,
+		beacons, controls,
 		datas, managements,
 		total)
 
@@ -229,24 +231,21 @@ type DataFrame struct {
 }
 
 type ControlFrame struct {
-	BSSID      string `json:"bssid"`
-	StationMAC string `json:"station_mac"`
-	Subtype    string `json:"subtype"`
-	Time       int64  `json:"time"`
-	Power      int64  `json:"power"`
-	FromDS     bool   `json:"from_DS"`
-	ToDS       bool   `json:"to_DS"`
+	Addr1   *string `json:"addr1"`
+	Addr2   *string `json:"addr2"`
+	Addr3   *string `json:"addr3"`
+	Addr4   *string `json:"addr4"`
+	Time    int64   `json:"time"`
+	Subtype string  `json:"subtype"` // So that the string is nullable
+	Power   int64   `json:"power"`
 }
 
 type ManagementFrame struct {
-	Addr1      *string `json:"addr1"`
-	Addr2      *string `json:"addr2"`
-	Addr3      *string `json:"addr3"`
-	Addr4      *string `json:"addr4"`
-	Time       int64   `json:"time"`
-	Subtype    string  `json:"subtype"` // So that the string is nullable
-	Power      int64   `json:"power"`
-	StationMAC string  `json:"station_mac"`
-	FromDS     bool    `json:"from_DS"`
-	ToDS       bool    `json:"to_DS"`
+	Addr1   *string `json:"addr1"`
+	Addr2   *string `json:"addr2"`
+	Addr3   *string `json:"addr3"`
+	Addr4   *string `json:"addr4"`
+	Time    int64   `json:"time"`
+	Subtype string  `json:"subtype"` // So that the string is nullable
+	Power   int64   `json:"power"`
 }
