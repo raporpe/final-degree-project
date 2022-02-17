@@ -87,24 +87,21 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_control_frame(self, bssid, station_mac, subtype, power, from_DS, to_DS):
-
-        if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
-            return
+    def register_control_frame(self, addr1, addr2, addr3, addr4, subtype, power):
 
         self.control_frames.append(
             {
-                "bssid": bssid,
-                "station_mac": station_mac,
-                "subtype": subtype,
+                "addr1": addr1,
+                "addr2": addr2,
+                "addr3": addr3,
+                "addr4": addr4,
                 "time": int(time.time()),
+                "subtype": str(subtype),
                 "power": power,
-                "from_DS": from_DS,
-                "to_DS": to_DS
             }
         )
 
-    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power, from_DS, to_DS, station_mac):
+    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power):
 
         self.management_frames.append(
             {
@@ -115,9 +112,6 @@ class DataManager(metaclass=Singleton):
                 "time": int(time.time()),
                 "subtype": str(subtype),
                 "power": power,
-                "from_DS": from_DS,
-                "to_DS": to_DS,
-                "station_mac": station_mac
             }
         )
 
