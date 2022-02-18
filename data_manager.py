@@ -28,22 +28,23 @@ class DataManager(metaclass=Singleton):
         self.data_frames = []
         self.control_frames = []
         self.management_frames = []
-        self.probe_response_frames = [] 
+        self.probe_response_frames = []
 
-    def register_probe_request_frame(self, station_mac, power, intent=None):
+    def register_probe_request_frame(self, station_mac, frequency, power, intent=None):
 
         self.probe_request_frames.append(
             {
                 "station_mac": station_mac,
                 "intent": intent,
                 "time": int(time.time()),
+                "frequency": frequency,
                 "power": power,
             }
         )
 
         self._send_data()
 
-    def register_probe_response_frame(self, bssid, ssid, station_mac, power):
+    def register_probe_response_frame(self, bssid, ssid, station_mac, frequency, power):
 
         self.probe_response_frames.append(
             {
@@ -51,17 +52,19 @@ class DataManager(metaclass=Singleton):
                 "ssid": ssid,
                 "station_mac": station_mac,
                 "time": int(time.time()),
+                "frequency": frequency,
                 "power": power,
             }
         )
 
         self._send_data()
 
-    def register_beacon_frame(self, bssid, ssid):
+    def register_beacon_frame(self, bssid, ssid, frequency):
 
         beacon = {
             "bssid": bssid,
-            "ssid": ssid
+            "ssid": ssid,
+            "frequency": frequency,
         }
 
         # If already present, do not insert
@@ -70,7 +73,7 @@ class DataManager(metaclass=Singleton):
 
         self.beacon_frames.append(beacon)
 
-    def register_data_frame(self, bssid, station_mac, power, subtype):
+    def register_data_frame(self, bssid, station_mac, subtype, frequency, power):
 
         if not self._validate_mac(bssid) or not self._validate_mac(station_mac):
             return
@@ -80,14 +83,15 @@ class DataManager(metaclass=Singleton):
                 "bssid": bssid,
                 "station_mac": station_mac,
                 "time": int(time.time()),
-                "power": power,
                 "subtype": subtype,
+                "frequency": frequency,
+                "power": power,
             }
         )
 
         self._send_data()
 
-    def register_control_frame(self, addr1, addr2, addr3, addr4, subtype, power):
+    def register_control_frame(self, addr1, addr2, addr3, addr4, subtype, frequency, power):
 
         self.control_frames.append(
             {
@@ -97,11 +101,12 @@ class DataManager(metaclass=Singleton):
                 "addr4": addr4,
                 "time": int(time.time()),
                 "subtype": str(subtype),
+                "frequency": frequency,
                 "power": power,
             }
         )
 
-    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, power):
+    def register_management_frame(self, addr1, addr2, addr3, addr4, subtype, frequency, power):
 
         self.management_frames.append(
             {
@@ -111,6 +116,7 @@ class DataManager(metaclass=Singleton):
                 "addr4": addr4,
                 "time": int(time.time()),
                 "subtype": str(subtype),
+                "frequency": frequency,
                 "power": power,
             }
         )
@@ -150,8 +156,7 @@ class DataManager(metaclass=Singleton):
             self.data_frames = []
             self.control_frames = []
             self.management_frames = []
-            self.probe_response_frames = [] 
-
+            self.probe_response_frames = []
 
     def _validate_mac(self, mac):
         return (mac != None

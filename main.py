@@ -57,6 +57,7 @@ def packet_handler(pkt):
                 DataManager().register_probe_request_frame(
                     station_mac=pkt.addr2,
                     intent=pkt.info.decode(),
+                    frequency=pkt.ChannelFrequency,
                     power=pkt.dBm_AntSignal
                 )
 
@@ -69,6 +70,7 @@ def packet_handler(pkt):
                     bssid=pkt.addr3,
                     ssid=pkt.info.decode(),
                     station_mac=pkt.addr1,
+                    frequency=pkt.ChannelFrequency,
                     power=pkt.dBm_AntSignal
                 )
 
@@ -82,6 +84,7 @@ def packet_handler(pkt):
                                                     addr3=pkt.addr3,
                                                     addr4=pkt.addr4,
                                                     subtype=pkt.subtype,
+                                                    frequency=pkt.ChannelFrequency,
                                                     power=pkt.dBm_AntSignal,
                                                     )
 
@@ -94,6 +97,7 @@ def packet_handler(pkt):
                 addr3=pkt.addr3,
                 addr4=pkt.addr4,
                 subtype=str(pkt.subtype),
+                frequency=pkt.ChannelFrequency,
                 power=pkt.dBm_AntSignal,
             )
 
@@ -112,8 +116,9 @@ def packet_handler(pkt):
             DataManager().register_data_frame(
                 bssid=bssid,
                 station_mac=station_mac,
+                subtype=pkt.subtype,
+                frequency=pkt.ChannelFrequency,
                 power=power,
-                subtype=pkt.subtype
             )
 
 
