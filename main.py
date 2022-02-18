@@ -5,6 +5,7 @@ import time
 # Get the mac address of the wireless mobile device
 # that we are interested in targeting
 
+FILTER = "not wlan type ctl"
 
 def get_station_mac_from_pkt(pkt):
 
@@ -50,15 +51,18 @@ def packet_handler(pkt):
             if pkt.subtype == 4:
 
                 print("Probe request with MAC {pkt.addr2} and ssid {ssid}".format(
-                    show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
+                    pkt=pkt, ssid=pkt.info.decode()))
 
                 DataManager().register_probe_request_frame(
-                    station_mac=pkt.addr2, intent=pkt.info.decode(), power=pkt.dBm_AntSignal)
+                    station_mac=pkt.addr2,
+                    intent=pkt.info.decode(),
+                    power=pkt.dBm_AntSignal
+                )
 
             # Probe request responses
             elif pkt.subtype == 5:
                 print("Probe response with MAC {pkt.addr2} and ssid {ssid}".format(
-                    show=pkt.show(dump=True), pkt=pkt, ssid=pkt.info.decode()))
+                    pkt=pkt, ssid=pkt.info.decode()))
 
                 DataManager().register_probe_response_frame(
                     bssid=pkt.addr3,
@@ -115,7 +119,7 @@ def packet_handler(pkt):
 
 def start_sniffer():
     try:
-        sniff(iface="wlan1", prn=packet_handler, store=0)
+        sniff(iface="wlan1", prn=packet_handler, store=0, filter=FILTER)
     except Exception as e:
         print("--------")
         traceback.print_exc()
