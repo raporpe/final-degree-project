@@ -7,6 +7,7 @@ import time
 
 FILTER = "not wlan type ctl"
 
+
 def get_station_mac_from_pkt(pkt):
 
     to_DS, from_DS = get_DS(pkt)
@@ -75,7 +76,6 @@ def packet_handler(pkt):
             elif pkt.subtype == 8:
                 print("Beacon with power " + str(pkt.dBm_AntSignal))
                 DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
-
 
             DataManager().register_management_frame(addr1=pkt.addr1,
                                                     addr2=pkt.addr2,
