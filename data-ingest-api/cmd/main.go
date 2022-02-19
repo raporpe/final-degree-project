@@ -93,7 +93,7 @@ func StoreData(uploadedData *UploadJSON) {
 		// Insert data into database
 		sql := `
 		INSERT INTO beacon_frames (bssid, ssid, device_id, frequency)
-		VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING
+		VALUES ($1, $2, $3, $4) ON CONFLICT (bssid) DO UPDATE SET frequency = $4
 		`
 
 		_, err := db.Exec(sql, u.BSSID, u.SSID, uploadedData.DeviceID, u.Frequency)
