@@ -59,83 +59,86 @@ func StoreData(uploadedData *UploadJSON) {
 
 	db := GetDB()
 
-	for _, r := range uploadedData.ProbeRequestFrames {
+	for _, u := range uploadedData.ProbeRequestFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO probe_request_frames (device_id, station_mac, intent, time, power, station_mac_vendor)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO probe_request_frames (device_id, station_mac, intent, time, power, station_mac_vendor, frequency)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`
 
-		_, err := db.Exec(sql, uploadedData.DeviceID, r.StationMAC, r.Intent, r.Time, r.Power, GetVendor(r.StationMAC))
+		_, err := db.Exec(sql, uploadedData.DeviceID, u.StationMAC,
+			u.Intent, u.Time, u.Power, GetVendor(u.StationMAC), u.Frequency)
 		CheckError(err)
 
 	}
 
 	// Insert probe responses
-	for _, r := range uploadedData.ProbeReponseFrames {
+	for _, u := range uploadedData.ProbeReponseFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO probe_response_frames (device_id, bssid, ssid, station_mac, station_mac_vendor, time, power)
+		INSERT INTO probe_response_frames (device_id, bssid, ssid, station_mac, station_mac_vendor, time, power, frequency)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`
+
+		_, err := db.Exec(sql, uploadedData.DeviceID, u.BSSID, u.SSID,
+			u.StationMAC, GetVendor(u.StationMAC), u.Time, u.Power, u.Frequency)
+		CheckError(err)
+
+	}
+
+	for _, u := range uploadedData.BeaconFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO beacon_frames (bssid, ssid, device_id, frequency)
+		VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING
+		`
+
+		_, err := db.Exec(sql, u.BSSID, u.SSID, uploadedData.DeviceID, u.Frequency)
+		CheckError(err)
+
+	}
+
+	for _, u := range uploadedData.DataFrames {
+
+		// Insert data into database
+		sql := `
+		INSERT INTO data_frames (bssid, station_mac, subtype, time, power, station_mac_vendor, frequency)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`
 
-		_, err := db.Exec(sql, uploadedData.DeviceID, r.BSSID, r.SSID, r.StationMAC, GetVendor(r.StationMAC), r.Time, r.Power)
+		_, err := db.Exec(sql, u.BSSID, u.StationMAC, u.Subtype,
+			u.Time, u.Power, GetVendor(u.StationMAC), u.Frequency)
 		CheckError(err)
 
 	}
 
-	for _, b := range uploadedData.BeaconFrames {
+	for _, u := range uploadedData.ControlFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO beacon_frames (bssid, ssid, device_id)
-		VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
+		INSERT INTO control_frames (addr1, addr2, addr3, addr4, time, subtype, power, frequency)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
-		_, err := db.Exec(sql, b.BSSID, b.SSID, uploadedData.DeviceID)
+		_, err := db.Exec(sql, u.Addr1, u.Addr2, u.Addr3, u.Addr4,
+			u.Time, u.Subtype, u.Power, u.Frequency)
 		CheckError(err)
 
 	}
 
-	for _, d := range uploadedData.DataFrames {
+	for _, u := range uploadedData.ManagementFrames {
 
 		// Insert data into database
 		sql := `
-		INSERT INTO data_frames (bssid, station_mac, subtype, time, power, station_mac_vendor)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power, frequency)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
-		_, err := db.Exec(sql, d.BSSID, d.StationMAC, d.Subtype, d.Time, d.Power, GetVendor(d.StationMAC))
-		CheckError(err)
-
-	}
-
-	for _, c := range uploadedData.ControlFrames {
-
-		// Insert data into database
-		sql := `
-		INSERT INTO control_frames (addr1, addr2, addr3, addr4, time, subtype, power)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`
-
-		_, err := db.Exec(sql, c.Addr1, c.Addr2, c.Addr3, c.Addr4,
-			c.Time, c.Subtype, c.Power)
-		CheckError(err)
-
-	}
-
-	for _, m := range uploadedData.ManagementFrames {
-
-		// Insert data into database
-		sql := `
-		INSERT INTO management_frames (addr1, addr2, addr3, addr4, time, subtype, power)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		`
-
-		_, err := db.Exec(sql, m.Addr1, m.Addr2, m.Addr3, m.Addr4,
-			m.Time, m.Subtype, m.Power)
+		_, err := db.Exec(sql, u.Addr1, u.Addr2, u.Addr3, u.Addr4,
+			u.Time, u.Subtype, u.Power, u.Frequency)
 
 		CheckError(err)
 
@@ -206,6 +209,7 @@ type ProbeRequestFrame struct {
 	StationMAC string  `json:"station_mac"`
 	Intent     *string `json:"intent"`
 	Time       int64   `json:"time"`
+	Frequency  int64   `json:"frequency"`
 	Power      int64   `json:"power"`
 }
 
@@ -214,12 +218,14 @@ type ProbeResponseFrame struct {
 	SSID       string `json:"ssid"`
 	StationMAC string `json:"station_mac"`
 	Time       int64  `json:"time"`
+	Frequency  int64  `json:"frequency"`
 	Power      int64  `json:"power"`
 }
 
 type BeaconFrame struct {
-	SSID  string `json:"ssid"`
-	BSSID string `json:"bssid"`
+	SSID      string `json:"ssid"`
+	BSSID     string `json:"bssid"`
+	Frequency int64  `json:"frequency"`
 }
 
 type DataFrame struct {
@@ -227,25 +233,28 @@ type DataFrame struct {
 	StationMAC string `json:"station_mac"`
 	Subtype    int64  `json:"subtype"`
 	Time       int64  `json:"time"`
+	Frequency  int64  `json:"frequency"`
 	Power      int64  `json:"power"`
 }
 
 type ControlFrame struct {
-	Addr1   *string `json:"addr1"`
-	Addr2   *string `json:"addr2"`
-	Addr3   *string `json:"addr3"`
-	Addr4   *string `json:"addr4"`
-	Time    int64   `json:"time"`
-	Subtype string  `json:"subtype"` // So that the string is nullable
-	Power   int64   `json:"power"`
+	Addr1     *string `json:"addr1"`
+	Addr2     *string `json:"addr2"`
+	Addr3     *string `json:"addr3"`
+	Addr4     *string `json:"addr4"`
+	Time      int64   `json:"time"`
+	Subtype   string  `json:"subtype"` // So that the string is nullable
+	Frequency int64   `json:"frequency"`
+	Power     int64   `json:"power"`
 }
 
 type ManagementFrame struct {
-	Addr1   *string `json:"addr1"`
-	Addr2   *string `json:"addr2"`
-	Addr3   *string `json:"addr3"`
-	Addr4   *string `json:"addr4"`
-	Time    int64   `json:"time"`
-	Subtype string  `json:"subtype"` // So that the string is nullable
-	Power   int64   `json:"power"`
+	Addr1     *string `json:"addr1"`
+	Addr2     *string `json:"addr2"`
+	Addr3     *string `json:"addr3"`
+	Addr4     *string `json:"addr4"`
+	Time      int64   `json:"time"`
+	Subtype   string  `json:"subtype"` // So that the string is nullable
+	Frequency int64   `json:"frequency"`
+	Power     int64   `json:"power"`
 }
