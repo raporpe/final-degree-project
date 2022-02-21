@@ -33,6 +33,8 @@ probe_request_fake_macs_cumulative = []
 probe_response_real_macs_cumulative = []
 data_cumulative = []
 probe_request_and_probe_response_real_macs = []
+all_real_cumulative = [0 for i in range(start_time, end_time, 3600)]
+probe_request_and_probe_response_real_macs = [0 for i in range(start_time, end_time, 3600)]
 unix_time = [i for i in range(start_time, end_time, 3600)]
 
 print("Calculating graphs...")
@@ -40,51 +42,63 @@ print("Calculating graphs...")
 print(probe_response_df.loc[probe_response_df['station_mac_vendor'] == None, "station_mac_vendor"])
 
 # Real macs from probe responses
-for t in tqdm(range(start_time, end_time, 3600)):
+for idx, t in tqdm(enumerate(range(start_time, end_time, 3600))):
     q = probe_response_df
     q = q.loc[
-        (q['station_mac_vendor'].notna()) & 
+        (q['station_mac_vendor'].notna()) &
+        (q['frequency'] < 3000) & 
         (q['time'] < t),]
-
     q = len(pd.unique(q["station_mac"]))
+
+    all_real_cumulative[idx] += q
+    probe_request_and_probe_response_real_macs[idx] += q
     probe_response_real_macs_cumulative.append(q)
 
 # Real macs from data frames responses
-for t in tqdm(range(start_time, end_time, 3600)):
+for idx, t in tqdm(enumerate(range(start_time, end_time, 3600))):
     q = data_df
     q = q.loc[
         (q['station_mac_vendor'].notna()) & 
+        (q['frequency'] < 3000) & 
         (q['time'] < t),]
 
     q = len(pd.unique(q["station_mac"]))
+    all_real_cumulative[idx] += q
+    probe_request_and_probe_response_real_macs[idx] += q
+
     data_cumulative.append(q)
 
-# Fake macs
-for t in tqdm(range(start_time, end_time, 3600)):
-    q = probe_request_df
-    q = q.loc[q['time'] < t,]
-    q = len(pd.unique(q["station_mac"]))
-
-    probe_request_fake_macs_cumulative.append(q)
 
 # Real macs
-for t in tqdm(range(start_time, end_time, 3600)):
+for idx, t in tqdm(enumerate(range(start_time, end_time, 3600))):
     q = probe_request_df
     q = q.loc[
         (q['station_mac_vendor'].notna()) & 
-        (q['time'] < t),]
+        (q['frequency'] < 3000) & 
+        (q['time'] < t)
+        ,]
+
+
     q = len(pd.unique(q["station_mac"]))
+    all_real_cumulative[idx] += q
 
     probe_request_real_macs_cumulative.append(q)
 
+# Fake macs from probe request
+for idx, t in tqdm(enumerate(range(start_time, end_time, 3600))):
+    q = probe_request_df
+    q = q.loc[(q['time'] < t) &
+        (q['frequency'] < 3000)
+    ,]
+
+    q = len(pd.unique(q["station_mac"]))
+    probe_request_fake_macs_cumulative.append(q)
 
 # Real macs from probe requests + probe responses
-probe_request_and_probe_response_real_macs = probe_response_real_macs_cumulative + probe_request_real_macs_cumulative
-# Remove duplicates
-probe_request_and_probe_response_real_macs = list(set(probe_request_and_probe_response_real_macs))
+probe_request_and_probe_response_real_macs = list(probe_request_and_probe_response_real_macs)
 
 # Real macs from probe responses + probe requests + data frames
-all_real_cumulative = list(set(probe_request_and_probe_response_real_macs + data_cumulative))
+all_real_cumulative = list(all_real_cumulative)
 
 probe_request_real_macs = deacumulate(probe_request_real_macs_cumulative)
 probe_request_fake_macs = deacumulate(probe_request_fake_macs_cumulative)
@@ -109,7 +123,8 @@ fig = px.line(df, x="time",
                 y=["probe_request_fake_macs_cumulative", "probe_request_fake_macs",
                     "probe_request_real_macs_cumulative", "probe_request_real_macs",
                     "probe_response_real_macs","probe_response_real_macs_cumulative",
-                    "data_cumulative"],
+                    "data_cumulative", "probe_request_and_probe_response_real_macs",
+                    "all_real_cumulative"],
                 title="Detected unique macs")
 
 dates = df["time"].to_list()
