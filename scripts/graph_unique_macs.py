@@ -20,8 +20,10 @@ print("Getting data from db....")
 
 probe_request_query = "select * from probe_request_frames"
 probe_response_query = "select * from probe_response_frames"
+data_query = "select * from data_frames"
 probe_request_df = pd.read_sql_query(probe_request_query, conn)
 probe_response_df = pd.read_sql_query(probe_response_query, conn)
+data_df = pd.read_sql_query(data_query, conn)
 
 # Calculate real macs increse graph
 start_time = 1644505200
@@ -29,6 +31,7 @@ end_time = int(time.time())
 probe_request_real_macs_cumulative = []
 probe_request_fake_macs_cumulative = []
 probe_response_real_macs_cumulative = []
+data_cumulative = []
 unix_time = [i for i in range(start_time, end_time, 3600)]
 
 print("Calculating graphs...")
@@ -44,6 +47,16 @@ for t in tqdm(range(start_time, end_time, 3600)):
 
     q = len(pd.unique(q["station_mac"]))
     probe_response_real_macs_cumulative.append(q)
+
+# Real macs from data frames responses
+for t in tqdm(range(start_time, end_time, 3600)):
+    q = data_df
+    q = q.loc[
+        (q['station_mac_vendor'].notna()) & 
+        (q['time'] < t),]
+
+    q = len(pd.unique(q["station_mac"]))
+    data_cumulative.append(q)
 
 # Fake macs
 for t in tqdm(range(start_time, end_time, 3600)):
@@ -75,6 +88,7 @@ df = pd.DataFrame({
     "probe_request_real_macs": probe_request_real_macs,
     "probe_response_real_macs": probe_response_real_macs,
     "probe_response_real_macs_cumulative": probe_response_real_macs_cumulative,
+    "data_cumulative": data_cumulative
 })
 
 df.time = df.time.apply(lambda d: datetime.datetime.fromtimestamp(
@@ -83,7 +97,8 @@ df.time = df.time.apply(lambda d: datetime.datetime.fromtimestamp(
 fig = px.line(df, x="time", 
                 y=["probe_request_fake_macs_cumulative", "probe_request_fake_macs",
                     "probe_request_real_macs_cumulative", "probe_request_real_macs",
-                    "probe_response_real_macs","probe_response_real_macs_cumulative"],
+                    "probe_response_real_macs","probe_response_real_macs_cumulative",
+                    "data_cumulative"],
                 title="Detected unique macs")
 
 dates = df["time"].to_list()
