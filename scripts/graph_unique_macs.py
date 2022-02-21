@@ -12,6 +12,11 @@ def deacumulate(a):
         ret.append(a[idx+1] - a[idx])
     return ret
 
+def acumulate(a):
+    ret = [a[0]]
+    for i in range(1, len(a), 1):
+        ret.append(a[i] + a[i-1])
+
 
 conn = psycopg2.connect(
     "host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
@@ -81,24 +86,23 @@ for idx, t in tqdm(enumerate(range(start_time, end_time, 3600))):
     # All data: pr + pre + data
     all_real_cumulative.append(
         len(
-            pd.unique(pre["station_mac"]) +
-            pd.unique(pr["station_mac"]) +
-            pd.unique(d["station_mac"])
+            pd.unique(
+                pre["station_mac"].append(pr["station_mac"]).append(d["station_mac"])
+            )
         )
     )
 
     # Probe request + probe responses
     probe_request_and_probe_response_real_macs.append(
-        len(
-            pd.unique(pre["station_mac"]) +
-            pd.unique(pr["station_mac"])
-        )
+        len(pd.unique(pre["station_mac"].append(pr["station_mac"])))
     )
 
 
 probe_request_real_macs = deacumulate(probe_request_real_macs_cumulative)
 probe_request_fake_macs = deacumulate(probe_request_fake_macs_cumulative)
 probe_response_real_macs = deacumulate(probe_response_real_macs_cumulative)
+
+
 df = pd.DataFrame({
     "time": unix_time,
     "probe_request_fake_macs_cumulative": probe_request_fake_macs_cumulative,
