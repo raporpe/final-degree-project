@@ -32,6 +32,7 @@ probe_request_real_macs_cumulative = []
 probe_request_fake_macs_cumulative = []
 probe_response_real_macs_cumulative = []
 data_cumulative = []
+probe_request_and_probe_response_real_macs = []
 unix_time = [i for i in range(start_time, end_time, 3600)]
 
 print("Calculating graphs...")
@@ -77,6 +78,14 @@ for t in tqdm(range(start_time, end_time, 3600)):
     probe_request_real_macs_cumulative.append(q)
 
 
+# Real macs from probe requests + probe responses
+probe_request_and_probe_response_real_macs = probe_response_real_macs_cumulative + probe_request_real_macs_cumulative
+# Remove duplicates
+probe_request_and_probe_response_real_macs = list(set(probe_request_and_probe_response_real_macs))
+
+# Real macs from probe responses + probe requests + data frames
+all_real_cumulative = list(set(probe_request_and_probe_response_real_macs + data_cumulative))
+
 probe_request_real_macs = deacumulate(probe_request_real_macs_cumulative)
 probe_request_fake_macs = deacumulate(probe_request_fake_macs_cumulative)
 probe_response_real_macs = deacumulate(probe_response_real_macs_cumulative)
@@ -88,7 +97,9 @@ df = pd.DataFrame({
     "probe_request_real_macs": probe_request_real_macs,
     "probe_response_real_macs": probe_response_real_macs,
     "probe_response_real_macs_cumulative": probe_response_real_macs_cumulative,
-    "data_cumulative": data_cumulative
+    "data_cumulative": data_cumulative,
+    "probe_request_and_probe_response_real_macs": probe_request_and_probe_response_real_macs,
+    "all_real_cumulative": all_real_cumulative
 })
 
 df.time = df.time.apply(lambda d: datetime.datetime.fromtimestamp(
