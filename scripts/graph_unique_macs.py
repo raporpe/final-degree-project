@@ -3,6 +3,7 @@ import plotly.express as px
 import pandas as pd
 import time
 import datetime
+from tqdm import tqdm
 
 def deacumulate(a):
     ret = [0]
@@ -15,69 +16,74 @@ conn = psycopg2.connect(
     "host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
 cur = conn.cursor()
 
+print("Getting data from db....")
+
+probe_request_query = "select * from probe_request_frames"
+probe_response_query = "select * from probe_response_frames"
+probe_request_df = pd.read_sql_query(probe_request_query, conn)
+probe_response_df = pd.read_sql_query(probe_response_query, conn)
 
 # Calculate real macs increse graph
 start_time = 1644505200
 end_time = int(time.time())
-real_macs_cumulative = []
-quite_real_macs_cumulative = []
-fake_macs_cumulative = []
+probe_request_real_macs_cumulative = []
+probe_request_fake_macs_cumulative = []
+probe_response_real_macs_cumulative = []
 unix_time = [i for i in range(start_time, end_time, 3600)]
 
+print("Calculating graphs...")
 
-for t in range(start_time, end_time, 3600):
-    cur.execute("SELECT count(distinct station_mac) FROM probe_request_frames WHERE station_mac_vendor is not null and time < '{}'".format(t))
-    number = cur.fetchall()[0][0]
-    print(number)
-    real_macs_cumulative.append(number)
+print(probe_response_df.loc[probe_response_df['station_mac_vendor'] == None, "station_mac_vendor"])
+
+# Real macs from probe responses
+for t in tqdm(range(start_time, end_time, 3600)):
+    q = probe_response_df
+    q = q.loc[
+        (q['station_mac_vendor'].notna()) & 
+        (q['time'] < t),]
+
+    q = len(pd.unique(q["station_mac"]))
+    probe_response_real_macs_cumulative.append(q)
+
+# Fake macs
+for t in tqdm(range(start_time, end_time, 3600)):
+    q = probe_request_df
+    q = q.loc[q['time'] < t,]
+    q = len(pd.unique(q["station_mac"]))
+
+    probe_request_fake_macs_cumulative.append(q)
+
+# Real macs
+for t in tqdm(range(start_time, end_time, 3600)):
+    q = probe_request_df
+    q = q.loc[
+        (q['station_mac_vendor'].notna()) & 
+        (q['time'] < t),]
+    q = len(pd.unique(q["station_mac"]))
+
+    probe_request_real_macs_cumulative.append(q)
 
 
-for t in range(start_time, end_time, 3600):
-    cur.execute("""select count(*) from 
-                (SELECT distinct station_mac FROM probe_request_frames WHERE station_mac_vendor is not null and time < '{}'
-                INTERSECT
-                SELECT station_mac FROM probe_request_frames GROUP BY station_mac HAVING COUNT(*) > 1
-                ) AS E""".format(t))
-    number = cur.fetchall()[0][0]
-    print(number)
-    quite_real_macs_cumulative.append(number)
-
-
-
-for t in range(start_time, end_time, 3600):
-    cur.execute("SELECT COUNT(distinct station_mac) FROM probe_request_frames WHERE station_mac_vendor is null and time < '{}'".format(t))
-    number = cur.fetchall()[0][0]
-    print(number)
-    fake_macs_cumulative.append(number)
-
-real_macs = deacumulate(real_macs_cumulative)
-fake_macs = deacumulate(fake_macs_cumulative)
-quite_real_macs = deacumulate(quite_real_macs_cumulative)
-
-print(len(unix_time))
-print(len(fake_macs_cumulative))
-print(len(fake_macs))
-print(len(real_macs_cumulative))
-print(len(real_macs))
-print(len(quite_real_macs_cumulative))
-print(len(quite_real_macs))
-
+probe_request_real_macs = deacumulate(probe_request_real_macs_cumulative)
+probe_request_fake_macs = deacumulate(probe_request_fake_macs_cumulative)
+probe_response_real_macs = deacumulate(probe_response_real_macs_cumulative)
 df = pd.DataFrame({
     "time": unix_time,
-    "fake_macs_cumulative": fake_macs_cumulative,
-    "fake_macs": fake_macs,
-    "real_macs_cumulative": real_macs_cumulative,
-    "real_macs": real_macs,
-    "quite_real_macs_cumulative": quite_real_macs_cumulative,
-    "quite_real_macs": quite_real_macs
+    "probe_request_fake_macs_cumulative": probe_request_fake_macs_cumulative,
+    "probe_request_fake_macs": probe_request_fake_macs,
+    "probe_request_real_macs_cumulative": probe_request_real_macs_cumulative,
+    "probe_request_real_macs": probe_request_real_macs,
+    "probe_response_real_macs": probe_response_real_macs,
+    "probe_response_real_macs_cumulative": probe_response_real_macs_cumulative,
 })
 
 df.time = df.time.apply(lambda d: datetime.datetime.fromtimestamp(
     int(d)).strftime('%d %a - %Hh'))
 
 fig = px.line(df, x="time", 
-                y=["fake_macs", "real_macs", "fake_macs_cumulative",
-                    "real_macs_cumulative", "quite_real_macs", "quite_real_macs_cumulative"],
+                y=["probe_request_fake_macs_cumulative", "probe_request_fake_macs",
+                    "probe_request_real_macs_cumulative", "probe_request_real_macs",
+                    "probe_response_real_macs","probe_response_real_macs_cumulative"],
                 title="Detected unique macs")
 
 dates = df["time"].to_list()
