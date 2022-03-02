@@ -1,5 +1,8 @@
+from email.quoprimime import body_length
+from datetime import datetime
 import time
 import requests
+import logging
 
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
@@ -35,8 +38,8 @@ class DataManager(metaclass=Singleton):
         self.probe_request_frames.append(
             {
                 "station_mac": station_mac,
-                "intent": intent,
-                "time": int(time.time()),
+                "intent": intent if intent != "" else None,
+                "time": datetime.now().isoformat(),
                 "frequency": frequency,
                 "power": power,
             }
@@ -51,7 +54,7 @@ class DataManager(metaclass=Singleton):
                 "bssid": bssid,
                 "ssid": ssid,
                 "station_mac": station_mac,
-                "time": int(time.time()),
+                "time": datetime.now().isoformat(),
                 "frequency": frequency,
                 "power": power,
             }
@@ -59,11 +62,16 @@ class DataManager(metaclass=Singleton):
 
         self._send_data()
 
-    def register_beacon_frame(self, bssid, ssid, frequency):
+    def register_beacon_frame(self, bssid, ssid: bytes, frequency):
+        
+        # Do not register hidden ssid's
+        # Hidden ssids container N null characters
+        if b'\x00' in ssid:
+            return
 
         beacon = {
             "bssid": bssid,
-            "ssid": ssid,
+            "ssid": ssid.decode(),
             "frequency": frequency,
         }
 
@@ -82,7 +90,7 @@ class DataManager(metaclass=Singleton):
             {
                 "bssid": bssid,
                 "station_mac": station_mac,
-                "time": int(time.time()),
+                "time": datetime.now().isoformat(),
                 "subtype": subtype,
                 "frequency": frequency,
                 "power": power,
@@ -99,7 +107,7 @@ class DataManager(metaclass=Singleton):
                 "addr2": addr2,
                 "addr3": addr3,
                 "addr4": addr4,
-                "time": int(time.time()),
+                "time": datetime.now().isoformat(),
                 "subtype": str(subtype),
                 "frequency": frequency,
                 "power": power,
@@ -114,7 +122,7 @@ class DataManager(metaclass=Singleton):
                 "addr2": addr2,
                 "addr3": addr3,
                 "addr4": addr4,
-                "time": int(time.time()),
+                "time": datetime.now().isoformat(),
                 "subtype": str(subtype),
                 "frequency": frequency,
                 "power": power,
