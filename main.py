@@ -1,12 +1,15 @@
-from scapy.all import Dot11, Dot11Elt, sniff
+from scapy.all import Dot11, sniff, Dot11Elt
 import traceback
 from data_manager import DataManager
 import time
+import sys
+import logging
+
 # Get the mac address of the wireless mobile device
 # that we are interested in targeting
 
 FILTER = "not wlan type ctl"
-
+logging.basicConfig(level=logging.INFO)
 
 def get_station_mac_from_pkt(pkt):
 
@@ -49,9 +52,9 @@ def packet_handler(pkt):
         if pkt.type == 0:
 
             # Probe requests
-            if pkt.subtype == 4:
+            if pkt.subtype == 4 and pkt.haslayer(Dot11Elt):
 
-                print("Probe request with MAC {pkt.addr2} and ssid {ssid}".format(
+                logging.debug("Probe request with MAC {pkt.addr2} and ssid {ssid}".format(
                     pkt=pkt, ssid=pkt.info.decode()))
 
                 DataManager().register_probe_request_frame(
@@ -62,8 +65,8 @@ def packet_handler(pkt):
                 )
 
             # Probe request responses
-            elif pkt.subtype == 5:
-                print("Probe response with MAC {pkt.addr2} and ssid {ssid}".format(
+            elif pkt.subtype == 5 and pkt.haslayer(Dot11Elt):
+                logging.debug("Probe response with MAC {pkt.addr2} and ssid {ssid}".format(
                     pkt=pkt, ssid=pkt.info.decode()))
 
                 DataManager().register_probe_response_frame(
@@ -76,9 +79,13 @@ def packet_handler(pkt):
 
             # Beacons
             elif pkt.subtype == 8:
-                print("Beacon with power " + str(pkt.dBm_AntSignal))
-                DataManager().register_beacon_frame(bssid=pkt.addr3, ssid=pkt.info.decode())
+                logging.debug("Beacon with power " + str(pkt.dBm_AntSignal))
+                DataManager().register_beacon_frame(bssid=pkt.addr3,
+                                                    ssid=pkt.info,
+                                                    frequency=pkt.ChannelFrequency,
+                                                    )
 
+            # Always register frame in management frames registry
             DataManager().register_management_frame(addr1=pkt.addr1,
                                                     addr2=pkt.addr2,
                                                     addr3=pkt.addr3,
@@ -101,7 +108,7 @@ def packet_handler(pkt):
                 power=pkt.dBm_AntSignal,
             )
 
-            print("Control frame subtype " + str(pkt.subtype))
+            logging.debug("Control frame subtype " + str(pkt.subtype))
 
         # Data frames
         elif pkt.type == 2:
@@ -110,7 +117,7 @@ def packet_handler(pkt):
             station_mac = get_station_mac_from_pkt(pkt)
             power = pkt.dBm_AntSignal
 
-            print("Data frame with power {pkt.dBm_AntSignal}".format(
+            logging.debug("Data frame with power {pkt.dBm_AntSignal}".format(
                 pkt=pkt))
 
             DataManager().register_data_frame(
@@ -123,13 +130,15 @@ def packet_handler(pkt):
 
 
 def start_sniffer():
-    try:
-        sniff(iface="wlan1", prn=packet_handler, store=0, filter=FILTER)
-    except Exception as e:
-        print("--------")
-        traceback.print_exc()
-        time.sleep(1)
-        start_sniffer()
+
+    while (True):
+        try:
+            sniff(iface="wlan1", prn=packet_handler, store=0, filter=FILTER)
+        except Exception as e:
+            logging.error("--------")
+            print(str(e), file=sys.stderr)
+            traceback.print_exc()
+
 
 
 if __name__ == "__main__":
