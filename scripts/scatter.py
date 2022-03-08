@@ -74,7 +74,7 @@ pr_c = pd.concat([pr_vb_c, pr_ve_c, pr_fb_c, pr_fe_c])
 
 print("Making scatter...")
 
-pr_c = pr_c[pr_c["number"] < 70]
+pr_c = pr_c[pr_c["number"] < 40]
 
 
 fig = px.scatter(pr, x="time", y="count", color="type",
@@ -82,5 +82,5 @@ fig = px.scatter(pr, x="time", y="count", color="type",
  marginal_y="box", title="Mac address ditribution")
 fig.show()
 
-fig2 = px.bar(pr_c, x="number", y="count", log_y=True, color="type")
+fig2 = px.bar(pr_c, x="number", y="count", log_y=False, color="type", barmode='group')
 fig2.show()
