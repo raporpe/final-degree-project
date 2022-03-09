@@ -2,7 +2,7 @@ import psycopg2
 import plotly.express as px
 import pandas as pd
 import time
-import datetime
+from datetime import datetime 
 from tqdm import tqdm
 
 SLICE = 3600
@@ -23,16 +23,17 @@ cur = conn.cursor()
 
 print("Getting data from db....")
 
-probe_request_query = "select * from probe_request_frames"
-probe_response_query = "select * from probe_response_frames"
-data_query = "select * from data_frames"
+start_time = "2022-02-22 00:00"
+end_time = datetime.now().isoformat()
+
+probe_request_query = "select * from probe_request_frames where time > 1645355292"
+probe_response_query = "select * from probe_response_frames where time > 1645355292"
+data_query = "select * from data_frames where time > 1645355292"
 probe_request_df = pd.read_sql_query(probe_request_query, conn)
 probe_response_df = pd.read_sql_query(probe_response_query, conn)
 data_df = pd.read_sql_query(data_query, conn)
 
 # Calculate real macs increse graph
-start_time = 1644505200
-end_time = int(time.time())
 probe_request_real_macs = []
 probe_request_fake_macs = []
 probe_response_real_macs = []
