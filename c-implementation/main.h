@@ -1,10 +1,11 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include <string>
 #include <tins/tins.h>
-#include <vector>
+
 #include <bitset>
+#include <string>
+#include <vector>
 
 using namespace std;
 using namespace Tins;
@@ -36,8 +37,6 @@ class PacketManager {
     map<mac, bitset<WINDOW_SIZE>> store;
     bool uploadBackend = false;
 
-    int getCurrentTime();
-
     void uploadToBackend();
 
     void checkTimeIncrease();
@@ -56,6 +55,8 @@ class PacketManager {
     void registerProbeResponse(Dot11ProbeResponse *frame);
 
     void registerControl(Dot11Control *frame);
+    
+    void registerData(Dot11Data *frame);
 };
 
 #endif

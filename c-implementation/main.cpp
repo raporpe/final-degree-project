@@ -1,11 +1,11 @@
 #include "main.h"
+#include "helpers.h"
 
 #include <curl/curl.h>
 #include <stdio.h>
 #include <tins/tins.h>
 
 #include <bitset>
-#include <ctime>
 #include <iostream>
 #include <json.hpp>
 #include <set>
@@ -14,13 +14,9 @@
 
 using namespace Tins;
 using namespace std;
-using namespace chrono;
 using json = nlohmann::json;
 
-int PacketManager::getCurrentTime() {
-    return duration_cast<seconds>(system_clock::now().time_since_epoch())
-        .count();
-}
+const string HOSTNAME = "tfg-server.raporpe.dev:2000";
 
 void PacketManager::uploadToBackend() {
     CURL *curl;
@@ -29,14 +25,12 @@ void PacketManager::uploadToBackend() {
     json j;
     j["device_id"] = "raspberry-1";
     j["count"] = getActiveDevices();
-    cout << j.dump() << endl;
 
     string jsonString = j.dump();
-    cout << jsonString << endl;
+    string url = "http://" + HOSTNAME + "/v1/ocupation";
 
     if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL,
-                         "http://tfg-server.raporpe.dev:2000/v1/ocupation");
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         if (uploadBackend) {
@@ -53,7 +47,7 @@ void PacketManager::uploadToBackend() {
 
 void PacketManager::checkTimeIncrease() {
     // Check if time should advance
-    if (this->getCurrentTime() - currentSecond > FRAME_TIME) {
+    if (getCurrentTime() - currentSecond > FRAME_TIME) {
         // Delete the inactive macs
         int deleted = 0;
         vector<mac> to_delete;
@@ -89,7 +83,7 @@ void PacketManager::checkTimeIncrease() {
         // Upload to backend
         uploadToBackend();
 
-        currentSecond = this->getCurrentTime();
+        currentSecond = getCurrentTime();
     }
 }
 
@@ -107,6 +101,17 @@ void PacketManager::addAndTickMac(mac mac_address) {
     }
 }
 
+void PacketManager::tickMac(mac mac_address) {
+    checkTimeIncrease();
+
+    // If exists in the store
+    if (store.find(mac_address) != store.end()) {
+        // Existing mac address, set last bit to true
+        store[mac_address][0] = 1;
+    }
+
+}
+
 int PacketManager::getActiveDevices() {
     // Count the number of active devices
     int count = 0;
@@ -118,17 +123,6 @@ int PacketManager::getActiveDevices() {
     return count;
 }
 
-void PacketManager::tickMac(mac mac_address) {
-    checkTimeIncrease();
-
-    // If exists in the store
-    if (store.find(mac_address) != store.end()) {
-        // Existing mac address, set last bit to true
-        store[mac_address][0] = 1;
-    }
-
-    // If does not exist, do nothing
-}
 
 PacketManager::PacketManager(char *upload_backend) {
     string upload(upload_backend);
@@ -147,6 +141,11 @@ void PacketManager::registerProbeResponse(Dot11ProbeResponse *frame) {
 void PacketManager::registerControl(Dot11Control *frame) {
     mac station_address = frame->addr1();
     tickMac(station_address);
+}
+
+void PacketManager::registerData(Dot11Data *frame) {
+    mac stationAddress = getStationMAC(frame);
+    addAndTickMac(stationAddress);
 }
 
 int main(int argc, char *argv[]) {
@@ -175,12 +174,14 @@ int main(int argc, char *argv[]) {
             // p->ssid() << endl;
             packetManager->registerProbeResponse(p);
         } else if (Dot11Control *p = pkt.pdu()->find_pdu<Dot11Control>()) {
-            // cout << "Control frame -> " << p->addr1() << endl;
+            //cout << "Control frame -> " << p->addr1() << " subtype " << (int) p->subtype() << endl;
             packetManager->registerControl(p);
         } else if (Dot11ControlTA *p = pkt.pdu()->find_pdu<Dot11ControlTA>()) {
-            cout << "Control TA detected" << endl;
+            cout << "--------- Control TA detected -----------" << endl;
         } else if (Dot11Data *p = pkt.pdu()->find_pdu<Dot11Data>()) {
-            cout << "Data detected" << endl;
+            mac stationAddress = getStationMAC(p);
+            //cout << "Data detected with mac " << stationAddress << endl;
+            packetManager->registerData(p);
         }
     }
 }
