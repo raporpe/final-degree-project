@@ -13,6 +13,8 @@
 *.so
 *.dylib
 
+*.txt
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -549,3 +551,18 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm,goland,go,node,macos,windows,linux
+
+
+# Vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
