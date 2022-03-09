@@ -22,6 +22,7 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/upload", UploadHandler)
+	r.HandleFunc("/v1/ocupation", OcupationHandler)
 
 	server := &http.Server{
 		Handler:      r,
@@ -49,9 +50,38 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(body, &uploadedData)
 	CheckError(err)
 
+	log.Println("-------------------------------------------")
 	log.Println("Received data from " + uploadedData.DeviceID)
-
 	go StoreData(&uploadedData)
+
+}
+
+func OcupationHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	CheckError(err)
+
+	var ocupationData OcupationData
+
+	err = json.Unmarshal(body, &ocupationData)
+	CheckError(err)
+
+	log.Println("--------------------------------------------")
+	log.Printf("Ocupation at %d from %s\n", ocupationData.Count, ocupationData.DeviceID)
+
+	go StoreOcupationData(ocupationData)
+
+}
+
+func StoreOcupationData(ocupationData OcupationData) {
+
+	db := GetDB()
+
+	sql := `
+	INSERT INTO ocupation (device_id, count, time) values ($1, $2, $3)
+	`
+
+	_, err := db.Exec(sql, ocupationData.DeviceID, ocupationData.Count, time.Now().Format(time.RFC3339))
+	CheckError(err)
 
 }
 
@@ -205,10 +235,15 @@ type UploadJSON struct {
 	ProbeReponseFrames []ProbeResponseFrame `json:"probe_response_frames"`
 }
 
+type OcupationData struct {
+	DeviceID string `json:"device_id"`
+	Count    int64  `json:"count"`
+}
+
 type ProbeRequestFrame struct {
 	StationMAC string  `json:"station_mac"`
 	Intent     *string `json:"intent"`
-	Time       int64   `json:"time"`
+	Time       string  `json:"time"`
 	Frequency  int64   `json:"frequency"`
 	Power      int64   `json:"power"`
 }
@@ -217,7 +252,7 @@ type ProbeResponseFrame struct {
 	BSSID      string `json:"bssid"`
 	SSID       string `json:"ssid"`
 	StationMAC string `json:"station_mac"`
-	Time       int64  `json:"time"`
+	Time       string `json:"time"`
 	Frequency  int64  `json:"frequency"`
 	Power      int64  `json:"power"`
 }
@@ -232,7 +267,7 @@ type DataFrame struct {
 	BSSID      string `json:"bssid"`
 	StationMAC string `json:"station_mac"`
 	Subtype    int64  `json:"subtype"`
-	Time       int64  `json:"time"`
+	Time       string `json:"time"`
 	Frequency  int64  `json:"frequency"`
 	Power      int64  `json:"power"`
 }
@@ -242,7 +277,7 @@ type ControlFrame struct {
 	Addr2     *string `json:"addr2"`
 	Addr3     *string `json:"addr3"`
 	Addr4     *string `json:"addr4"`
-	Time      int64   `json:"time"`
+	Time      string  `json:"time"`
 	Subtype   string  `json:"subtype"` // So that the string is nullable
 	Frequency int64   `json:"frequency"`
 	Power     int64   `json:"power"`
@@ -253,7 +288,7 @@ type ManagementFrame struct {
 	Addr2     *string `json:"addr2"`
 	Addr3     *string `json:"addr3"`
 	Addr4     *string `json:"addr4"`
-	Time      int64   `json:"time"`
+	Time      string  `json:"time"`
 	Subtype   string  `json:"subtype"` // So that the string is nullable
 	Frequency int64   `json:"frequency"`
 	Power     int64   `json:"power"`
