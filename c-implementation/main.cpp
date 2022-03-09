@@ -176,8 +176,6 @@ int main(int argc, char *argv[]) {
         } else if (Dot11Control *p = pkt.pdu()->find_pdu<Dot11Control>()) {
             //cout << "Control frame -> " << p->addr1() << " subtype " << (int) p->subtype() << endl;
             packetManager->registerControl(p);
-        } else if (Dot11ControlTA *p = pkt.pdu()->find_pdu<Dot11ControlTA>()) {
-            cout << "--------- Control TA detected -----------" << endl;
         } else if (Dot11Data *p = pkt.pdu()->find_pdu<Dot11Data>()) {
             mac stationAddress = getStationMAC(p);
             //cout << "Data detected with mac " << stationAddress << endl;
