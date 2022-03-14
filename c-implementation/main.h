@@ -36,6 +36,7 @@ class PacketManager {
     int currentSecond = 0;
     map<mac, bitset<WINDOW_SIZE>> store;
     bool uploadBackend = false;
+    char* device_id;
 
     void uploadToBackend();
 
@@ -46,11 +47,9 @@ class PacketManager {
     int getActiveDevices();
 
     void tickMac(mac mac_address);
-    
-    string getDeviceID();
 
    public:
-    PacketManager(char *upload_backend);
+    PacketManager(char *upload_backend, char* device_id);
 
     void registerProbeRequest(Dot11ProbeRequest *frame);
 

@@ -11,6 +11,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <stdlib.h>
 
 using namespace Tins;
 using namespace std;
@@ -23,7 +24,7 @@ void PacketManager::uploadToBackend() {
     curl = curl_easy_init();
 
     json j;
-    j["device_id"] = getDeviceID();
+    j["device_id"] = this->device_id;
     j["count"] = getActiveDevices();
 
     string jsonString = j.dump();
@@ -124,9 +125,10 @@ int PacketManager::getActiveDevices() {
 }
 
 
-PacketManager::PacketManager(char *upload_backend) {
+PacketManager::PacketManager(char *upload_backend, char* device_id) {
     string upload(upload_backend);
     this->uploadBackend = upload == "yes";
+    this->device_id = device_id;
 }
 
 void PacketManager::registerProbeRequest(Dot11ProbeRequest *frame) {
@@ -148,11 +150,6 @@ void PacketManager::registerData(Dot11Data *frame) {
     addAndTickMac(stationAddress);
 }
 
-string PacketManager::getDeviceID() {
-    char* env = getenv("DEVICE_ID");
-    return env == nullptr ? string() : string(env);
-}
-
 //void PacketManager::registerData(Dot11QoSData *frame) {
 //    mac stationAddress = getStationMAC(frame);
 //    addAndTickMac(stationAddress);
@@ -167,7 +164,7 @@ int main(int argc, char *argv[]) {
 
     printf("Starting...\n");
 
-    PacketManager *packetManager = new PacketManager(argv[1]);
+    PacketManager *packetManager = new PacketManager(argv[1], argv[3]);
 
     while (true) {
         // cout << "Getting packet..." << endl;
