@@ -16,7 +16,7 @@ cur = conn.cursor()
 
 print("Connected to db!")
 
-query = "select * from ocupation"
+query = "select * from ocupation order by time"
 
 print("Downloading data...")
 
