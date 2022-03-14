@@ -46,6 +46,8 @@ class PacketManager {
     int getActiveDevices();
 
     void tickMac(mac mac_address);
+    
+    string getDeviceID();
 
    public:
     PacketManager(char *upload_backend);

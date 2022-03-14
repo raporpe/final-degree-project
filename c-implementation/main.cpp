@@ -23,7 +23,7 @@ void PacketManager::uploadToBackend() {
     curl = curl_easy_init();
 
     json j;
-    j["device_id"] = "raspberry-1";
+    j["device_id"] = getDeviceID();
     j["count"] = getActiveDevices();
 
     string jsonString = j.dump();
@@ -146,6 +146,11 @@ void PacketManager::registerControl(Dot11Control *frame) {
 void PacketManager::registerData(Dot11Data *frame) {
     mac stationAddress = getStationMAC(frame);
     addAndTickMac(stationAddress);
+}
+
+string PacketManager::getDeviceID() {
+    char* env = getenv("DEVICE_ID");
+    return env == nullptr ? string() : string(env);
 }
 
 //void PacketManager::registerData(Dot11QoSData *frame) {
