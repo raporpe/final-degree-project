@@ -55,8 +55,9 @@ class PacketManager {
     void registerProbeResponse(Dot11ProbeResponse *frame);
 
     void registerControl(Dot11Control *frame);
-    
+
     void registerData(Dot11Data *frame);
+
 };
 
 #endif

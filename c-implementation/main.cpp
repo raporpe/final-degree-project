@@ -65,8 +65,8 @@ void PacketManager::checkTimeIncrease() {
 
         // Print the current state
         for (auto pair : store) {
-            cout << pair.first << " - " << pair.second << " / "
-                 << (float)pair.second.count() / (float)WINDOW_SIZE << endl;
+        //    cout << pair.first << " - " << pair.second << " / "
+        //         << (float)pair.second.count() / (float)WINDOW_SIZE << endl;
         }
 
         int count = getActiveDevices();
@@ -148,6 +148,11 @@ void PacketManager::registerData(Dot11Data *frame) {
     addAndTickMac(stationAddress);
 }
 
+//void PacketManager::registerData(Dot11QoSData *frame) {
+//    mac stationAddress = getStationMAC(frame);
+//    addAndTickMac(stationAddress);
+//}
+
 int main(int argc, char *argv[]) {
     SnifferConfiguration config;
     config.set_promisc_mode(true);
@@ -164,7 +169,12 @@ int main(int argc, char *argv[]) {
         Packet pkt = sniffer.next_packet();
         // cout << "Got packet. Processing..." << endl;
 
-        if (Dot11ProbeRequest *p = pkt.pdu()->find_pdu<Dot11ProbeRequest>()) {
+        
+        
+        if (Dot11ManagementFrame *p =
+                       pkt.pdu()->find_pdu<Dot11ManagementFrame>()) {
+            if(p->subtype() != 8 && p->subtype() != 4 && p->subtype() != 5 && p->subtype() != 12) cout << "Management frame -> " << (int)p->subtype() << " mac " << p->addr2() << endl;
+        } else if (Dot11ProbeRequest *p = pkt.pdu()->find_pdu<Dot11ProbeRequest>()) {
             // cout << "Probe request -> " << p->addr2() << " with SSID " <<
             // p->ssid() << endl;
             packetManager->registerProbeRequest(p);
@@ -176,6 +186,10 @@ int main(int argc, char *argv[]) {
         } else if (Dot11Control *p = pkt.pdu()->find_pdu<Dot11Control>()) {
             //cout << "Control frame -> " << p->addr1() << " subtype " << (int) p->subtype() << endl;
             packetManager->registerControl(p);
+        //} else if (Dot11QoSData *p = pkt.pdu()->find_pdu<Dot11QoSData>()) {
+        //    packetManager->registerData(p);
+        //    cout << "Qos" << endl;
+        //
         } else if (Dot11Data *p = pkt.pdu()->find_pdu<Dot11Data>()) {
             mac stationAddress = getStationMAC(p);
             //cout << "Data detected with mac " << stationAddress << endl;
