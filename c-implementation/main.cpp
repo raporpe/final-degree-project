@@ -162,8 +162,8 @@ int main(int argc, char *argv[]) {
     SnifferConfiguration config;
     config.set_promisc_mode(true);
     config.set_immediate_mode(true);
-
-    Sniffer sniffer("wlan1", config);
+    
+    Sniffer sniffer(argv[2], config);
 
     printf("Starting...\n");
 
