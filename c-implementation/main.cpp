@@ -22,11 +22,11 @@ const string HOSTNAME = "tfg-server.raporpe.dev:2000";
 
 void PacketManager::uploadToBackend() {
     json j1;
-    j1["device_id"] = this->device_id;
+    j1["device_id"] = this->deviceID;
     j1["count"] = getActiveDevices();
 
     json j2;
-    j2["device_id"] = this->device_id;
+    j2["device_id"] = this->deviceID;
     j2["seconds_per_window"] = FRAME_TIME;
     j2["number_of_windows"] = WINDOW_SIZE;
 
@@ -35,7 +35,7 @@ void PacketManager::uploadToBackend() {
         json state;
         state["mac"] = kv.first.to_string();
         state["state"] = kv.second.state.to_string();
-        state["signal_strength"] = kv.second.signal_strength;
+        state["signal_strength"] = kv.second.signalStrength;
         states.push_back(state);
     }
 
@@ -95,40 +95,40 @@ void PacketManager::checkTimeIncrease() {
     }
 }
 
-void PacketManager::addAndTickMac(mac mac_address, int signal_strength) {
+void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
     checkTimeIncrease();
 
-    if (store.find(mac_address) != store.end()) {
+    if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
-        store[mac_address].state[0] = 1;
+        store[macAddress].state[0] = 1;
 
         // Average with the recent signal strength
-        cout << store[mac_address].signal_strength << endl; // old
-        store[mac_address].signal_strength = (int) store[mac_address].signal_strength * 0.9 + signal_strength * 0.1;
-        cout << store[mac_address].signal_strength << endl; // new
+        cout << store[macAddress].signalStrength << endl; // old
+        store[macAddress].signalStrength = (int) store[macAddress].signalStrength * 0.9 + signalStrength * 0.1;
+        cout << store[macAddress].signalStrength << endl; // new
 
     } else
     // If does not exist, insert
     {
         // Create store 
         StoreObject toStore;
-        toStore.signal_strength = signal_strength;
+        toStore.signalStrength = signalStrength;
         toStore.state = bitset<WINDOW_SIZE>(1);
 
         // New mac address, register in memory
         store.insert(
-            make_pair(mac_address, toStore)
+            make_pair(macAddress, toStore)
         );
     }
 }
 
-void PacketManager::tickMac(mac mac_address, int signal_strength) {
+void PacketManager::tickMac(mac macAddress, int signalStrength) {
     checkTimeIncrease();
 
     // If exists in the store
-    if (store.find(mac_address) != store.end()) {
+    if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
-        store[mac_address].state[0] = 1;
+        store[macAddress].state[0] = 1;
     }
 
 }
@@ -145,63 +145,64 @@ int PacketManager::getActiveDevices() {
 }
 
 
-PacketManager::PacketManager(char *upload_backend, char* device_id) {
-    string upload(upload_backend);
-    this->uploadBackend = upload == "yes";
-    this->device_id = device_id;
+PacketManager::PacketManager(bool uploadBackend, string deviceID) {
+    this->uploadBackend = uploadBackend;
+    this->deviceID = deviceID;
 }
 
-void PacketManager::registerProbeRequest(Dot11ProbeRequest *frame) {
-    mac station_address = frame->addr2();
-    int signal_strength = frame->bss
-    addAndTickMac(station_address);
+void PacketManager::registerProbeRequest(Dot11ProbeRequest *frame, int signalStrength) {
+    mac stationAddress = frame->addr2();
+    addAndTickMac(stationAddress, signalStrength);
 }
 
-void PacketManager::registerProbeResponse(Dot11ProbeResponse *frame) {
-    mac station_address = frame->addr2();
-    addAndTickMac(station_address);
+void PacketManager::registerProbeResponse(Dot11ProbeResponse *frame, int signalStrength) {
+    mac stationAddress = frame->addr2();
+    addAndTickMac(stationAddress, signalStrength);
 }
-void PacketManager::registerControl(Dot11Control *frame) {
-    mac station_address = frame->addr1();
-    tickMac(station_address);
+void PacketManager::registerControl(Dot11Control *frame, int signalStrength) {
+    mac stationAddress = frame->addr1();
+    tickMac(stationAddress, signalStrength);
 }
 
-void PacketManager::registerData(Dot11Data *frame) {
+void PacketManager::registerData(Dot11Data *frame, int signalStrength) {
     mac stationAddress = getStationMAC(frame);
-    addAndTickMac(stationAddress);
+    addAndTickMac(stationAddress, signalStrength);
 }
 
-//void PacketManager::registerData(Dot11QoSData *frame) {
-//    mac stationAddress = getStationMAC(frame);
-//    addAndTickMac(stationAddress);
-//}
+void channel_switcher(string interface) {
+    const vector<int> channels = {1,6,11,2,7,12,3,9,13,4,10,5,8};
+    for (auto channel : channels) {
+        string command = "iw dev " + interface + " set channel " + to_string(channel);
+        system(command.c_str());
+    }
+}
 
 int main(int argc, char *argv[]) {
 
     // CLI parsing
     CLI::App app{"C++ data sniffer and storer"};
     string interface = "";
-    string device_id = "";
-    bool disable_upload = false;
-    bool debug_mode = false;
+    string deviceID = "";
+    bool disableUpload = false;
+    bool debugMode = false;
 
     app.add_option("-i,--interface,--iface", interface, "The 802.11 interface to sniff data from")->required();
-    app.add_option("-d,--device,--dev", device_id, "The 802.11 interface to sniff data from")->required();
-    app.add_flag("-n,--no-upload", upload, "Disable sending data to backend");
-    app.add_flag("--debug", debug_mode, "Enable debug mode");
+    app.add_option("-d,--device,--dev", deviceID, "The 802.11 interface to sniff data from")->required();
+    app.add_flag("-n,--no-upload", disableUpload, "Disable sending data to backend");
+    app.add_flag("--debug", debugMode, "Enable debug mode");
 
     CLI11_PARSE(app, argc, argv);
 
     // Print important information
     cout << "-----------------------" << endl;
     cout << "Capture device: " << interface << endl;
-    cout << "Device ID: " << device_id << endl;
-    if (debug_mode) cout << "Debug mode enabled!" << endl;
-    if (diable_upload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
+    cout << "Device ID: " << deviceID << endl;
+    if (debugMode) cout << "Debug mode enabled!" << endl;
+    if (disableUpload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
     cout << "-----------------------" << endl;
 
     // Show this message for a second
-    thread::sleep_for(seconds(1));
+    this_thread::sleep_for(chrono::seconds(1));
 
     cout << "Starting capture..." << endl;
 
@@ -213,14 +214,14 @@ int main(int argc, char *argv[]) {
     Sniffer sniffer(interface, config);
 
 
-    PacketManager *packetManager = new PacketManager(disable_upload, );
+    PacketManager *packetManager = new PacketManager(disableUpload, deviceID);
 
     while (true) {
         // cout << "Getting packet..." << endl;
         Packet pkt = sniffer.next_packet();
         // cout << "Got packet. Processing..." << endl;
 
-        int signal_strength = pkt.pdu()->find_pdu<RadioTap>()->dbm_signal();
+        int signalStrength = pkt.pdu()->find_pdu<RadioTap>()->dbm_signal();
         
         if (Dot11ManagementFrame *p =
                        pkt.pdu()->find_pdu<Dot11ManagementFrame>()) {
@@ -228,23 +229,19 @@ int main(int argc, char *argv[]) {
         } else if (Dot11ProbeRequest *p = pkt.pdu()->find_pdu<Dot11ProbeRequest>()) {
             // cout << "Probe request -> " << p->addr2() << " with SSID " <<
             // p->ssid() << endl;
-            packetManager->registerProbeRequest(p);
+            packetManager->registerProbeRequest(p, signalStrength);
         } else if (Dot11ProbeResponse *p =
                        pkt.pdu()->find_pdu<Dot11ProbeResponse>()) {
             // cout << "Probe response -> " << p->addr2() << " with SSID " <<
             // p->ssid() << endl;
-            packetManager->registerProbeResponse(p);
+            packetManager->registerProbeResponse(p, signalStrength);
         } else if (Dot11Control *p = pkt.pdu()->find_pdu<Dot11Control>()) {
             //cout << "Control frame -> " << p->addr1() << " subtype " << (int) p->subtype() << endl;
-            packetManager->registerControl(p);
-        //} else if (Dot11QoSData *p = pkt.pdu()->find_pdu<Dot11QoSData>()) {
-        //    packetManager->registerData(p);
-        //    cout << "Qos" << endl;
-        //
+            packetManager->registerControl(p, signalStrength);
         } else if (Dot11Data *p = pkt.pdu()->find_pdu<Dot11Data>()) {
-            mac stationAddress = getStationMAC(p);
+            // mac stationAddress = getStationMAC(p);
             //cout << "Data detected with mac " << stationAddress << endl;
-            packetManager->registerData(p);
+            packetManager->registerData(p, signalStrength);
         }
     }
 }

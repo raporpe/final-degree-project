@@ -31,7 +31,7 @@ struct UploadJSONData {
 
 struct StoreObject {
     bitset<WINDOW_SIZE> state;
-    int signal_strength;
+    int signalStrength;
 };
 
 
@@ -43,28 +43,28 @@ class PacketManager {
     int currentSecond = 0;
     map<mac, StoreObject> store;
     bool uploadBackend = false;
-    char* device_id;
+    string deviceID;
 
     void uploadToBackend();
 
     void checkTimeIncrease();
 
-    void addAndTickMac(mac mac_address, int signal_strength);
+    void addAndTickMac(mac macAddress, int signalStrength);
 
-    void tickMac(mac mac_address, int signal_strength);
+    void tickMac(mac macAddress, int signalStrength);
 
     int getActiveDevices();
 
    public:
-    PacketManager(char *upload_backend, char* device_id);
+    PacketManager(bool uploadBackend, string deviceID);
 
-    void registerProbeRequest(Dot11ProbeRequest *frame);
+    void registerProbeRequest(Dot11ProbeRequest *frame, int signalStrength);
 
-    void registerProbeResponse(Dot11ProbeResponse *frame);
+    void registerProbeResponse(Dot11ProbeResponse *frame, int signalStrength);
 
-    void registerControl(Dot11Control *frame);
+    void registerControl(Dot11Control *frame, int signalStrength);
 
-    void registerData(Dot11Data *frame);
+    void registerData(Dot11Data *frame, int signalStrength);
 
 };
 
