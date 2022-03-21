@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bits-and-blooms/bitset"
 	_ "github.com/lib/pq"
 
 	"github.com/gorilla/mux"
@@ -18,11 +19,19 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
+var currentState = make(map[string]StoredState)
+
+type StoredState struct {
+	State          bitset.BitSet
+	SignalStrength int64
+}
+
 func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/upload", UploadHandler)
 	r.HandleFunc("/v1/ocupation", OcupationHandler)
+	r.HandleFunc("/v1/state", StateHandler)
 
 	server := &http.Server{
 		Handler:      r,
@@ -53,6 +62,35 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("-------------------------------------------")
 	log.Println("Received data from " + uploadedData.DeviceID)
 	go StoreData(&uploadedData)
+
+}
+
+func StateHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	CheckError(err)
+
+	var state UploadedState
+
+	err = json.Unmarshal(body, &state)
+	CheckError(err)
+
+	go StoreState(state)
+
+}
+
+func StoreState(state UploadedState) {
+
+	for _, s := range state.States {
+		_, exists := currentState[s.Mac]
+		if exists {
+			bitset.BitSet.Uni currentState[s.Mac].State
+		} else {
+			currentState[s.Mac] = StoredState{
+				State:          *bitset.New(uint(state.NumberOfWindows)),
+				SignalStrength: s.SignalStrength,
+			}
+		}
+	}
 
 }
 
@@ -238,6 +276,19 @@ type UploadJSON struct {
 type OcupationData struct {
 	DeviceID string `json:"device_id"`
 	Count    int64  `json:"count"`
+}
+
+type UploadedState struct {
+	DeviceID         string     `json:"device_id"`
+	States           []MacState `json:"states"`
+	SecondsPerWindow int64      `json:"seconds_per_window"`
+	NumberOfWindows  int64      `json:"number_of_windows"`
+}
+
+type MacState struct {
+	Mac            string `json:"mac"`
+	State          string `json:"state"`
+	SignalStrength int64  `json:"signal_strength"`
 }
 
 type ProbeRequestFrame struct {
