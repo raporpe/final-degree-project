@@ -1,3 +1,4 @@
+from distutils.log import debug
 import psycopg2
 import plotly.express as px
 import pandas as pd
@@ -6,6 +7,7 @@ import datetime
 from tqdm import tqdm
 import plotly.graph_objs as go
 
+device_id = "raspberry-1"
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 print("Connecting to db...")
@@ -24,5 +26,5 @@ df = pd.read_sql_query(query, conn)
 
 print(df)
 
-fig = px.line(df, x="time", y="count")
+fig = px.line(df, x="time", y="count", color="device_id")
 fig.show()
