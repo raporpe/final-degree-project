@@ -13,6 +13,7 @@ using namespace Tins;
 const int WINDOW_SIZE = 15;
 const int FRAME_TIME = 60;
 const float ACTIVITY_PERCENTAGE = 0.6;
+extern bool debugMode;
 
 typedef HWAddress<6> mac;
 

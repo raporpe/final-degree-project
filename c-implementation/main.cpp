@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <tins/tins.h>
+#include <unistd.h>
 
 #include <bitset>
 #include <iostream>
@@ -19,8 +20,10 @@ using namespace std;
 using json = nlohmann::json;
 
 const string HOSTNAME = "tfg-server.raporpe.dev:2000";
+bool debugMode;
 
 void PacketManager::uploadToBackend() {
+
     json j1;
     j1["device_id"] = this->deviceID;
     j1["count"] = getActiveDevices();
@@ -72,10 +75,10 @@ void PacketManager::checkTimeIncrease() {
         }
 
         // Print the current state
-        for (auto pair : store) {
+        // for (auto pair : store) {
         //    cout << pair.first << " - " << pair.second << " / "
         //         << (float)pair.second.count() / (float)WINDOW_SIZE << endl;
-        }
+        // }
 
         int count = getActiveDevices();
 
@@ -103,9 +106,9 @@ void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
         store[macAddress].state[0] = 1;
 
         // Average with the recent signal strength
-        cout << store[macAddress].signalStrength << endl; // old
+        //cout << store[macAddress].signalStrength << endl; // old
         store[macAddress].signalStrength = (int) store[macAddress].signalStrength * 0.9 + signalStrength * 0.1;
-        cout << store[macAddress].signalStrength << endl; // new
+        //cout << store[macAddress].signalStrength << endl; // new
 
     } else
     // If does not exist, insert
@@ -129,6 +132,7 @@ void PacketManager::tickMac(mac macAddress, int signalStrength) {
     if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
         store[macAddress].state[0] = 1;
+        store[macAddress].signalStrength = (int) store[macAddress].signalStrength * 0.9 + signalStrength * 0.1;
     }
 
 }
@@ -171,9 +175,15 @@ void PacketManager::registerData(Dot11Data *frame, int signalStrength) {
 
 void channel_switcher(string interface) {
     const vector<int> channels = {1,6,11,2,7,12,3,9,13,4,10,5,8};
-    for (auto channel : channels) {
-        string command = "iw dev " + interface + " set channel " + to_string(channel);
-        system(command.c_str());
+
+    // Switch channels for ever
+    while(true) {
+        for (auto channel : channels) {
+            string command = "iw dev " + interface + " set channel " + to_string(channel);
+            system(command.c_str());
+            this_thread::sleep_for(chrono::milliseconds(100));
+            if (debugMode) cout << "Thread switch" << endl;
+        }
     }
 }
 
@@ -184,7 +194,7 @@ int main(int argc, char *argv[]) {
     string interface = "";
     string deviceID = "";
     bool disableUpload = false;
-    bool debugMode = false;
+    bool sudo = geteuid() == 0;
 
     app.add_option("-i,--interface,--iface", interface, "The 802.11 interface to sniff data from")->required();
     app.add_option("-d,--device,--dev", deviceID, "The 802.11 interface to sniff data from")->required();
@@ -192,6 +202,10 @@ int main(int argc, char *argv[]) {
     app.add_flag("--debug", debugMode, "Enable debug mode");
 
     CLI11_PARSE(app, argc, argv);
+
+    if(!sudo) {
+        cout << "You must run this program as root!" << endl;
+    }
 
     // Print important information
     cout << "-----------------------" << endl;
@@ -201,8 +215,13 @@ int main(int argc, char *argv[]) {
     if (disableUpload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
     cout << "-----------------------" << endl;
 
+
     // Show this message for a second
     this_thread::sleep_for(chrono::seconds(1));
+
+    cout << "Starting channel switcher..." << endl;
+
+    thread t1(channel_switcher, interface);
 
     cout << "Starting capture..." << endl;
 
@@ -217,10 +236,7 @@ int main(int argc, char *argv[]) {
     PacketManager *packetManager = new PacketManager(disableUpload, deviceID);
 
     while (true) {
-        // cout << "Getting packet..." << endl;
         Packet pkt = sniffer.next_packet();
-        // cout << "Got packet. Processing..." << endl;
-
         int signalStrength = pkt.pdu()->find_pdu<RadioTap>()->dbm_signal();
         
         if (Dot11ManagementFrame *p =

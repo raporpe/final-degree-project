@@ -42,12 +42,13 @@ void postJSON(string url, json j) {
     curl = curl_easy_init();
 
     string jsonString = j.dump();
-    cout << jsonString << endl;
+    if (debugMode) cout << jsonString << endl;
 
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
         CURLcode res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
