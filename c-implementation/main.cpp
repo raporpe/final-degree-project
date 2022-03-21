@@ -1,16 +1,18 @@
 #include "main.h"
 #include "helpers.h"
+#include "CLI11.hpp"
+#include "json.hpp"
 
 #include <stdio.h>
 #include <tins/tins.h>
 
 #include <bitset>
 #include <iostream>
-#include <json.hpp>
 #include <set>
 #include <string>
 #include <vector>
 #include <stdlib.h>
+#include <thread>
 
 using namespace Tins;
 using namespace std;
@@ -151,6 +153,7 @@ PacketManager::PacketManager(char *upload_backend, char* device_id) {
 
 void PacketManager::registerProbeRequest(Dot11ProbeRequest *frame) {
     mac station_address = frame->addr2();
+    int signal_strength = frame->bss
     addAndTickMac(station_address);
 }
 
@@ -174,22 +177,50 @@ void PacketManager::registerData(Dot11Data *frame) {
 //}
 
 int main(int argc, char *argv[]) {
+
+    // CLI parsing
+    CLI::App app{"C++ data sniffer and storer"};
+    string interface = "";
+    string device_id = "";
+    bool disable_upload = false;
+    bool debug_mode = false;
+
+    app.add_option("-i,--interface,--iface", interface, "The 802.11 interface to sniff data from")->required();
+    app.add_option("-d,--device,--dev", device_id, "The 802.11 interface to sniff data from")->required();
+    app.add_flag("-n,--no-upload", upload, "Disable sending data to backend");
+    app.add_flag("--debug", debug_mode, "Enable debug mode");
+
+    CLI11_PARSE(app, argc, argv);
+
+    // Print important information
+    cout << "-----------------------" << endl;
+    cout << "Capture device: " << interface << endl;
+    cout << "Device ID: " << device_id << endl;
+    if (debug_mode) cout << "Debug mode enabled!" << endl;
+    if (diable_upload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
+    cout << "-----------------------" << endl;
+
+    // Show this message for a second
+    thread::sleep_for(seconds(1));
+
+    cout << "Starting capture..." << endl;
+
+
     SnifferConfiguration config;
     config.set_promisc_mode(true);
     config.set_immediate_mode(true);
     
-    Sniffer sniffer(argv[2], config);
+    Sniffer sniffer(interface, config);
 
-    printf("Starting...\n");
 
-    PacketManager *packetManager = new PacketManager(argv[1], argv[3]);
+    PacketManager *packetManager = new PacketManager(disable_upload, );
 
     while (true) {
         // cout << "Getting packet..." << endl;
         Packet pkt = sniffer.next_packet();
         // cout << "Got packet. Processing..." << endl;
 
-        
+        int signal_strength = pkt.pdu()->find_pdu<RadioTap>()->dbm_signal();
         
         if (Dot11ManagementFrame *p =
                        pkt.pdu()->find_pdu<Dot11ManagementFrame>()) {
