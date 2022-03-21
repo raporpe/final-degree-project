@@ -1,7 +1,6 @@
 #include "main.h"
 #include "helpers.h"
 
-#include <curl/curl.h>
 #include <stdio.h>
 #include <tins/tins.h>
 
@@ -20,31 +19,37 @@ using json = nlohmann::json;
 const string HOSTNAME = "tfg-server.raporpe.dev:2000";
 
 void PacketManager::uploadToBackend() {
-    CURL *curl;
-    curl = curl_easy_init();
+    json j1;
+    j1["device_id"] = this->device_id;
+    j1["count"] = getActiveDevices();
 
-    json j;
-    j["device_id"] = this->device_id;
-    j["count"] = getActiveDevices();
+    json j2;
+    j2["device_id"] = this->device_id;
+    j2["seconds_per_window"] = FRAME_TIME;
+    j2["number_of_windows"] = WINDOW_SIZE;
 
-    string jsonString = j.dump();
-    string url = "http://" + HOSTNAME + "/v1/ocupation";
-
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        if (uploadBackend) {
-            CURLcode res = curl_easy_perform(curl);
-
-            if (res != CURLE_OK) {
-                fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                        curl_easy_strerror(res));
-            }
-        }
-        curl_easy_cleanup(curl);
+    json states;
+    for(auto kv : this->store) {
+        json state;
+        state["mac"] = kv.first.to_string();
+        state["state"] = kv.second.to_string();
+        state["signal_strenght"] = 0;
+        states.push_back(state);
     }
+
+    j2["states"] = states;
+
+
+    string url1 = "http://" + HOSTNAME + "/v1/ocupation";
+    string url2 = "http://" + HOSTNAME + "/v1/state";
+
+    if (uploadBackend) {
+        postJSON(url1, j1);
+    } 
+    postJSON(url2, j2);
+
 }
+
 
 void PacketManager::checkTimeIncrease() {
     // Check if time should advance
