@@ -32,8 +32,8 @@ void PacketManager::uploadToBackend() {
     for(auto kv : this->store) {
         json state;
         state["mac"] = kv.first.to_string();
-        state["state"] = kv.second.to_string();
-        state["signal_strenght"] = 0;
+        state["state"] = kv.second.state.to_string();
+        state["signal_strength"] = kv.second.signal_strength;
         states.push_back(state);
     }
 
@@ -59,7 +59,7 @@ void PacketManager::checkTimeIncrease() {
         vector<mac> to_delete;
 
         for (auto pair : store) {
-            if (pair.second.none()) {
+            if (pair.second.state.none()) {
                 to_delete.push_back(pair.first);
                 deleted++;
             }
@@ -82,8 +82,8 @@ void PacketManager::checkTimeIncrease() {
         cout << "Active devices -> " << count << endl;
 
         // Advance one bit
-        for (auto pair : store) {
-            store[pair.first] = pair.second << 1;
+        for (auto pair = store.begin(); pair != store.end(); pair++ ) {
+            pair->second.state << 1;
         }
 
         // Upload to backend
@@ -93,27 +93,40 @@ void PacketManager::checkTimeIncrease() {
     }
 }
 
-void PacketManager::addAndTickMac(mac mac_address) {
+void PacketManager::addAndTickMac(mac mac_address, int signal_strength) {
     checkTimeIncrease();
 
     if (store.find(mac_address) != store.end()) {
         // Existing mac address, set last bit to true
-        store[mac_address][0] = 1;
+        store[mac_address].state[0] = 1;
+
+        // Average with the recent signal strength
+        cout << store[mac_address].signal_strength << endl; // old
+        store[mac_address].signal_strength = (int) store[mac_address].signal_strength * 0.9 + signal_strength * 0.1;
+        cout << store[mac_address].signal_strength << endl; // new
+
     } else
     // If does not exist, insert
     {
+        // Create store 
+        StoreObject toStore;
+        toStore.signal_strength = signal_strength;
+        toStore.state = bitset<WINDOW_SIZE>(1);
+
         // New mac address, register in memory
-        store.insert(make_pair(mac_address, bitset<WINDOW_SIZE>(1)));
+        store.insert(
+            make_pair(mac_address, toStore)
+        );
     }
 }
 
-void PacketManager::tickMac(mac mac_address) {
+void PacketManager::tickMac(mac mac_address, int signal_strength) {
     checkTimeIncrease();
 
     // If exists in the store
     if (store.find(mac_address) != store.end()) {
         // Existing mac address, set last bit to true
-        store[mac_address][0] = 1;
+        store[mac_address].state[0] = 1;
     }
 
 }
@@ -122,7 +135,7 @@ int PacketManager::getActiveDevices() {
     // Count the number of active devices
     int count = 0;
     for (auto pair : this->store) {
-        if ((float)pair.second.count() / (float)WINDOW_SIZE >=
+        if ((float)pair.second.state.count() / (float)WINDOW_SIZE >=
             ACTIVITY_PERCENTAGE)
             count++;
     }
