@@ -22,7 +22,7 @@ var macDB oui.StaticDB
 var currentState = make(map[string]StoredState)
 
 type StoredState struct {
-	State          bitset.BitSet
+	State          *bitset.BitSet
 	SignalStrength int64
 }
 
@@ -79,14 +79,23 @@ func StateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StoreState(state UploadedState) {
+	fmt.Println("Storing state from " + state.DeviceID)
 
 	for _, s := range state.States {
+		// Convert the string to the bitset state
+		bitSetState := bitset.New(uint(len(s.State)))
+		for index, char := range s.State {
+			if string(char) == "1" {
+				bitSetState.Set(uint(index))
+			}
+		}
+
 		_, exists := currentState[s.Mac]
 		if exists {
-			bitset.BitSet.Uni currentState[s.Mac].State
+			currentState[s.Mac].State.InPlaceUnion(bitSetState)
 		} else {
 			currentState[s.Mac] = StoredState{
-				State:          *bitset.New(uint(state.NumberOfWindows)),
+				State:          bitSetState,
 				SignalStrength: s.SignalStrength,
 			}
 		}
