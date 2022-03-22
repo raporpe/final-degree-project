@@ -14,6 +14,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <thread>
+#include <regex>
 
 using namespace Tins;
 using namespace std;
@@ -163,6 +164,7 @@ void PacketManager::registerProbeResponse(Dot11ProbeResponse *frame, int signalS
     mac stationAddress = frame->addr2();
     addAndTickMac(stationAddress, signalStrength);
 }
+
 void PacketManager::registerControl(Dot11Control *frame, int signalStrength) {
     mac stationAddress = frame->addr1();
     tickMac(stationAddress, signalStrength);
@@ -184,6 +186,40 @@ void channel_switcher(string interface) {
             this_thread::sleep_for(chrono::milliseconds(100));
         }
     }
+}
+
+void set_monitor_mode(string interface) {
+    string interface_down = "ip link set " + interface + " down";
+    string interface_up = "ip link set " + interface + " up";
+    string set_monitor = "iw " + interface + " set monitor control";
+    system(interface_down.c_str());
+    system(set_monitor.c_str());
+    system(interface_up.c_str());
+}
+
+bool is_monitor_mode(string interface) {
+    // Command that calls iw to get the interface
+    string cmd = "iw dev " + interface + " info";
+
+    array<char, 128> buffer;
+    string result;
+    unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        throw runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+
+    // Match with regex
+    smatch match;
+    regex rx("(managed|monitor)");
+    regex_search(result, match, rx);
+    string res(match[0]);
+    cout << res << endl;
+
+    return res == "monitor";
+
 }
 
 int main(int argc, char *argv[]) {
@@ -213,6 +249,16 @@ int main(int argc, char *argv[]) {
     if (debugMode) cout << "Debug mode enabled!" << endl;
     if (disableUpload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
     cout << "-----------------------" << endl;
+
+    cout << "Enabling monitor mode in interface " << interface << "..." << endl;
+    if (!is_monitor_mode(interface)) {
+        // Try to set in monitor mode
+        set_monitor_mode(interface);
+        if(!is_monitor_mode(interface)) {
+            cout << "Could not enable monitor mode in interface " << interface << endl;
+            exit(1);
+        } 
+    }
 
 
     // Show this message for a second
