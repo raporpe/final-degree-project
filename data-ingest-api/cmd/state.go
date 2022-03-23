@@ -4,25 +4,25 @@ import (
 	"strings"
 )
 
-type State struct {
-	state []bool
+type Record struct {
+	Record []bool `json:"record"`
 }
 
-func NewState(s string) *State {
-	newState := State{
-		state: make([]bool, len(s)),
+func NewRecord(s string) *Record {
+	newState := Record{
+		Record: make([]bool, len(s)),
 	}
 
 	for index, char := range s {
-		newState.state[index] = string(char) == "1"
+		newState.Record[index] = string(char) == "1"
 	}
 
 	return &newState
 }
 
-func (s State) String() string {
+func (s Record) String() string {
 	var sb strings.Builder
-	for _, bool := range s.state {
+	for _, bool := range s.Record {
 		if bool {
 			sb.WriteString("1")
 		} else {
@@ -33,12 +33,12 @@ func (s State) String() string {
 	return sb.String()
 }
 
-func (s *State) Set(index int, value bool) {
-	s.state[index] = value
+func (s *Record) Set(index int, value bool) {
+	s.Record[index] = value
 }
 
-func (s State) IsEmpty() bool {
-	for _, bool := range s.state {
+func (s Record) IsEmpty() bool {
+	for _, bool := range s.Record {
 		if bool {
 			// Not empty
 			return false
@@ -47,19 +47,19 @@ func (s State) IsEmpty() bool {
 	return true
 }
 
-func (s *State) Union(otherState *State) {
-	for index, os := range otherState.state {
-		s.state[index] = s.state[index] || os
+func (s *Record) Union(otherState *Record) {
+	for index, os := range otherState.Record {
+		s.Record[index] = s.Record[index] || os
 	}
 }
 
-func (s *State) Shift(shift int) {
+func (s *Record) Shift(shift int) {
 	// Left shift in the state
 	for i := 0; i < shift; i++ {
 		// Add false at the end
-		s.state = append(s.state, false)
+		s.Record = append(s.Record, false)
 
 		// Delete the first one
-		s.state = s.state[1:len(s.state)]
+		s.Record = s.Record[1:len(s.Record)]
 	}
 }
