@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bits-and-blooms/bitset"
 	_ "github.com/lib/pq"
 
 	"github.com/gorilla/mux"
@@ -19,12 +18,19 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
-var currentState = make(map[string]StoredState)
+type SystemState map[string]DeviceState
 
-type StoredState struct {
-	State          *bitset.BitSet
+type DeviceState struct {
+	DeviceID  string
+	MacStates map[int]MacState
+}
+
+type MacState struct {
+	State          State
 	SignalStrength int64
 }
+
+var systemState SystemState
 
 func main() {
 
@@ -32,6 +38,7 @@ func main() {
 	r.HandleFunc("/v1/upload", UploadHandler)
 	r.HandleFunc("/v1/ocupation", OcupationHandler)
 	r.HandleFunc("/v1/state", StateHandler)
+	r.HandleFunc("/v1/config", ConfigHandler)
 
 	server := &http.Server{
 		Handler:      r,
@@ -48,6 +55,16 @@ func main() {
 
 	CheckError(server.ListenAndServe())
 
+}
+
+func ConfigHandler(w http.ResponseWriter, r *http.Request) {
+	configResponse := ConfigResponse{
+		WindowTime: 60,
+		WindowSize: 15,
+	}
+	byteJson, err := json.Marshal(configResponse)
+	CheckError(err)
+	w.Write(byteJson)
 }
 
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -78,27 +95,25 @@ func StateHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func StoreState(state UploadedState) {
-	fmt.Println("Storing state from " + state.DeviceID)
+func StoreState(uploadedState UploadedState) {
+	fmt.Println("Storing state from " + uploadedState.DeviceID)
 
-	for _, s := range state.States {
+	for _, s := range uploadedState.States {
 		// Convert the string to the bitset state
-		bitSetState := bitset.New(uint(len(s.State)))
-		for index, char := range s.State {
-			if string(char) == "1" {
-				bitSetState.Set(uint(index))
-			}
-		}
+		newState := NewState(s.State)
+		fmt.Printf("s.State: %v\n", s.State)
+		fmt.Printf("newState: %v\n", newState)
 
-		_, exists := currentState[s.Mac]
-		if exists {
-			currentState[s.Mac].State.InPlaceUnion(bitSetState)
-		} else {
-			currentState[s.Mac] = StoredState{
-				State:          bitSetState,
-				SignalStrength: s.SignalStrength,
-			}
-		}
+		//_, exists := systemState[uploadedState.DeviceID].MacStates[0][s.Mac]
+		//if exists {
+		//	//systemState[0][s.Mac].State.Union(newState)
+		//} else {
+		//	systemState[uploadedState.DeviceID][s.Mac] = MacState{
+		//		State:          *newState,
+		//		SignalStrength: s.SignalStrength,
+		//		LastTime:       1,
+		//	}
+		//}
 	}
 
 }
@@ -288,13 +303,14 @@ type OcupationData struct {
 }
 
 type UploadedState struct {
-	DeviceID         string     `json:"device_id"`
-	States           []MacState `json:"states"`
-	SecondsPerWindow int64      `json:"seconds_per_window"`
-	NumberOfWindows  int64      `json:"number_of_windows"`
+	DeviceID         string             `json:"device_id"`
+	States           []UploadedMacState `json:"states"`
+	SecondsPerWindow int64              `json:"seconds_per_window"`
+	NumberOfWindows  int64              `json:"number_of_windows"`
+	Time             int64              `json:"time"`
 }
 
-type MacState struct {
+type UploadedMacState struct {
 	Mac            string `json:"mac"`
 	State          string `json:"state"`
 	SignalStrength int64  `json:"signal_strength"`
@@ -352,4 +368,9 @@ type ManagementFrame struct {
 	Subtype   string  `json:"subtype"` // So that the string is nullable
 	Frequency int64   `json:"frequency"`
 	Power     int64   `json:"power"`
+}
+
+type ConfigResponse struct {
+	WindowTime int `json:"window_time"`
+	WindowSize int `json:"window_size"`
 }
