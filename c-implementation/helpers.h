@@ -17,4 +17,7 @@ bool isMacValid(mac address);
 
 void postJSON(string url, json j);
 
+json getJSON(string url);
+
+
 #endif
