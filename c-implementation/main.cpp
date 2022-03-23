@@ -25,15 +25,11 @@ bool debugMode;
 
 void PacketManager::uploadToBackend() {
 
-    json j1;
-    j1["device_id"] = this->deviceID;
-    j1["count"] = getActiveDevices();
-
-    json j2;
-    j2["device_id"] = this->deviceID;
-    j2["seconds_per_window"] = FRAME_TIME;
-    j2["number_of_windows"] = WINDOW_SIZE;
-    j2["time"] = this->currentSecond;
+    json j;
+    j["device_id"] = this->deviceID;
+    j["seconds_per_window"] = FRAME_TIME;
+    j["number_of_windows"] = WINDOW_SIZE;
+    j["time"] = this->currentSecond;
 
     json states;
     for(auto kv : this->store) {
@@ -44,16 +40,11 @@ void PacketManager::uploadToBackend() {
         states.push_back(state);
     }
 
-    j2["mac_states"] = states;
+    j["mac_states"] = states;
 
+    string url = "http://" + HOSTNAME + "/v1/state";
 
-    string url1 = "http://" + HOSTNAME + "/v1/ocupation";
-    string url2 = "http://" + HOSTNAME + "/v1/state";
-
-    if (uploadBackend) {
-        postJSON(url1, j1);
-    } 
-    postJSON(url2, j2);
+    if (uploadBackend) postJSON(url, j);
 
 }
 
