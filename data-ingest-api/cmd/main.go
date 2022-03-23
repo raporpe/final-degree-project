@@ -31,7 +31,6 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/upload", UploadHandler)
-	r.HandleFunc("/v1/ocupation", OcupationHandler)
 	r.HandleFunc("/v1/state", StateHandler)
 	r.HandleFunc("/v1/config", ConfigHandler)
 
@@ -117,22 +116,6 @@ func StoreState(uState UploadedState) {
 		}
 
 	}
-
-}
-
-func OcupationHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	CheckError(err)
-
-	var ocupationData OcupationData
-
-	err = json.Unmarshal(body, &ocupationData)
-	CheckError(err)
-
-	log.Println("--------------------------------------------")
-	log.Printf("Ocupation at %d from %s\n", ocupationData.Count, ocupationData.DeviceID)
-
-	go StoreOcupationData(ocupationData)
 
 }
 
