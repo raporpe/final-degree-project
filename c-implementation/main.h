@@ -30,8 +30,8 @@ struct UploadJSONData {
     std::vector<ProbeRequest> probeRequests;
 };
 
-struct StoreObject {
-    bitset<WINDOW_SIZE> state;
+struct RecordObject {
+    bitset<WINDOW_SIZE> record;
     int signalStrength;
 };
 
@@ -42,7 +42,7 @@ class PacketManager {
     vector<Dot11ProbeResponse> probeResponses;
     vector<Dot11ProbeRequest> probeRequests;
     int currentSecond = 0;
-    map<mac, StoreObject> store;
+    map<mac, RecordObject> store;
     bool uploadBackend = false;
     string deviceID;
 

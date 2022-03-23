@@ -39,12 +39,12 @@ void PacketManager::uploadToBackend() {
     for(auto kv : this->store) {
         json state;
         state["mac"] = kv.first.to_string();
-        state["state"] = kv.second.state.to_string();
+        state["record"] = kv.second.record.to_string();
         state["signal_strength"] = kv.second.signalStrength;
         states.push_back(state);
     }
 
-    j2["states"] = states;
+    j2["mac_states"] = states;
 
 
     string url1 = "http://" + HOSTNAME + "/v1/ocupation";
@@ -66,7 +66,7 @@ void PacketManager::checkTimeIncrease() {
         vector<mac> to_delete;
 
         for (auto pair : store) {
-            if (pair.second.state.none()) {
+            if (pair.second.record.none()) {
                 to_delete.push_back(pair.first);
                 deleted++;
             }
@@ -76,12 +76,6 @@ void PacketManager::checkTimeIncrease() {
             store.erase(del);
         }
 
-        // Print the current state
-        // for (auto pair : store) {
-        //    cout << pair.first << " - " << pair.second << " / "
-        //         << (float)pair.second.count() / (float)WINDOW_SIZE << endl;
-        // }
-
         int count = getActiveDevices();
 
         cout << "Deleted " << deleted << " records." << endl;
@@ -89,8 +83,8 @@ void PacketManager::checkTimeIncrease() {
         cout << "Active devices -> " << count << endl;
 
         // Advance one bit
-        for (auto pair = store.begin(); pair != store.end(); pair++ ) {
-            pair->second.state << 1;
+        for (auto& pair : store) {
+            pair.second.record <<= 1;
         }
 
         // Upload to backend
@@ -105,20 +99,18 @@ void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
 
     if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
-        store[macAddress].state[0] = 1;
+        store[macAddress].record[0] = 1;
 
         // Average with the recent signal strength
-        //cout << store[macAddress].signalStrength << endl; // old
         store[macAddress].signalStrength = (int) store[macAddress].signalStrength * 0.9 + signalStrength * 0.1;
-        //cout << store[macAddress].signalStrength << endl; // new
 
     } else
     // If does not exist, insert
     {
         // Create store 
-        StoreObject toStore;
+        RecordObject toStore;
         toStore.signalStrength = signalStrength;
-        toStore.state = bitset<WINDOW_SIZE>(1);
+        toStore.record = bitset<WINDOW_SIZE>(1);
 
         // New mac address, register in memory
         store.insert(
@@ -133,7 +125,7 @@ void PacketManager::tickMac(mac macAddress, int signalStrength) {
     // If exists in the store
     if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
-        store[macAddress].state[0] = 1;
+        store[macAddress].record[0] = 1;
         store[macAddress].signalStrength = (int) store[macAddress].signalStrength * 0.9 + signalStrength * 0.1;
     }
 
@@ -143,7 +135,7 @@ int PacketManager::getActiveDevices() {
     // Count the number of active devices
     int count = 0;
     for (auto pair : this->store) {
-        if ((float)pair.second.state.count() / (float)WINDOW_SIZE >=
+        if ((float)pair.second.record.count() / (float)WINDOW_SIZE >=
             ACTIVITY_PERCENTAGE)
             count++;
     }
@@ -217,7 +209,6 @@ bool is_monitor_mode(string interface) {
     regex rx("(managed|monitor)");
     regex_search(result, match, rx);
     string res(match[0]);
-    cout << res << endl;
 
     return res == "monitor";
 
@@ -258,7 +249,6 @@ int main(int argc, char *argv[]) {
     if (disableUpload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
     cout << "Window size: " << w_size << endl;
     cout << "Window time: " << w_time << endl;
-    cout << "" << getJSON("http://" + HOSTNAME + "/v1/config") << endl;
     cout << "-----------------------" << endl;
 
     cout << "Enabling monitor mode in interface " << interface << "..." << endl;
