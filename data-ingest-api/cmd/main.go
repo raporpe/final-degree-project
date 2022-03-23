@@ -18,7 +18,7 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
-var systemState = make(map[string]map[int]MacState)
+var systemState = make(map[string]map[int]map[string]MacState)
 
 type DeviceState map[int]MacState
 
@@ -52,6 +52,7 @@ func main() {
 }
 
 func ConfigHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("\"serving config\": %v\n", "serving config")
 	configResponse := ConfigResponse{
 		WindowTime: 60,
 		WindowSize: 15,
@@ -101,25 +102,42 @@ func StateHandler(w http.ResponseWriter, r *http.Request) {
 func StoreState(uState UploadedState) {
 	fmt.Println("Storing state from " + uState.DeviceID)
 
-	time := uState.Time / uState.SecondsPerWindow
-	if systemState[uState.DeviceID] == nil {
-		systemState[uState.DeviceID] = make(map[int]MacState)
+	
+	deviceID := uState.DeviceID
+	t := uState.Time
+	
+	// If device is new
+	if systemState[deviceID] == nil {
+		systemState[deviceID] = make(map[int]map[string]MacState)
 	}
 
+	// Time has not been previously registered
+	if systemState[deviceID][t] == nil {
+		systemState[deviceID][t] = make(map[string]MacState)
+	}
+	
+	activeMacs := 0
+	// Each iteration is the record of a single mac
 	for _, s := range uState.MacStates {
 		// Convert the string to the bitset state
-		newState := NewRecord(s.Record)
+		newRecord := NewRecord(s.Record)
 
-		systemState[uState.DeviceID][time] = MacState{
-			Record:         *newState,
+		systemState[deviceID][t][s.Mac] = MacState{
+			Record:         *newRecord,
 			SignalStrength: int64(s.SignalStrength),
+		}
+
+		if newRecord.IsActive() {
+			activeMacs++
 		}
 
 	}
 
+	StoreOcupationData(uState.DeviceID, activeMacs, time.Unix(int64(uState.Time), 0))
+
 }
 
-func StoreOcupationData(ocupationData OcupationData) {
+func StoreOcupationData(deviceID string, count int, t time.Time) {
 
 	db := GetDB()
 
@@ -127,7 +145,7 @@ func StoreOcupationData(ocupationData OcupationData) {
 	INSERT INTO ocupation (device_id, count, time) values ($1, $2, $3)
 	`
 
-	_, err := db.Exec(sql, ocupationData.DeviceID, ocupationData.Count, time.Now().Format(time.RFC3339))
+	_, err := db.Exec(sql, deviceID, count, t.Format(time.RFC3339))
 	CheckError(err)
 
 }
