@@ -230,12 +230,14 @@ int main(int argc, char *argv[]) {
     string interface = "";
     string deviceID = "";
     bool disableUpload = false;
+    bool showPackets = false;
     bool sudo = geteuid() == 0;
 
     app.add_option("-i,--interface,--iface", interface, "The 802.11 interface to sniff data from")->required();
     app.add_option("-d,--device,--dev", deviceID, "The 802.11 interface to sniff data from")->required();
     app.add_flag("-n,--no-upload", disableUpload, "Disable sending data to backend");
     app.add_flag("--debug", debugMode, "Enable debug mode");
+    app.add_flag("-p,--packets", showPackets, "Show all the captured packets");
 
     CLI11_PARSE(app, argc, argv);
 
@@ -296,18 +298,18 @@ int main(int argc, char *argv[]) {
                        pkt.pdu()->find_pdu<Dot11ManagementFrame>()) {
             if(debugMode && p->subtype() != 8 && p->subtype() != 4 && p->subtype() != 5 && p->subtype() != 12) cout << "Management frame -> " << (int)p->subtype() << " mac " << p->addr2() << endl;
         } else if (Dot11ProbeRequest *p = pkt.pdu()->find_pdu<Dot11ProbeRequest>()) {
-            if (debugMode) cout << "Probe request -> " << p->addr2() << " with SSID " << p->ssid() << endl;
+            if (showPackets) cout << "Probe request  -> " << p->addr2() << " with SSID " << p->ssid() << endl;
             packetManager->registerProbeRequest(p, signalStrength);
         } else if (Dot11ProbeResponse *p =
                        pkt.pdu()->find_pdu<Dot11ProbeResponse>()) {
-            if (debugMode) cout << "Probe response -> " << p->addr2() << " with SSID " << p->ssid() << endl;
+            if (showPackets) cout << "Probe response -> " << p->addr2() << " with SSID " << p->ssid() << endl;
             packetManager->registerProbeResponse(p, signalStrength);
         } else if (Dot11Control *p = pkt.pdu()->find_pdu<Dot11Control>()) {
-            if (debugMode) cout << "Control frame -> " << p->addr1() << " subtype " << (int) p->subtype() << endl;
+            if (showPackets) cout << "Control frame  -> " << p->addr1() << " subtype " << (int) p->subtype() << endl;
             packetManager->registerControl(p, signalStrength);
         } else if (Dot11Data *p = pkt.pdu()->find_pdu<Dot11Data>()) {
             mac stationAddress = getStationMAC(p);
-            if (debugMode) cout << "Data detected with mac " << stationAddress << endl;
+            if (showPackets) cout << "Data frame     -> " << stationAddress << " subtype " << (int) p->subtype() << endl;
             packetManager->registerData(p, signalStrength);
         }
     }
