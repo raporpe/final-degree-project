@@ -6,6 +6,7 @@
 #include <bitset>
 #include <string>
 #include <vector>
+#include <mutex>
 
 using namespace std;
 using namespace Tins;
@@ -31,7 +32,7 @@ struct UploadJSONData {
 };
 
 struct RecordObject {
-    bitset<WINDOW_SIZE> record;
+    bitset<RECORD_SIZE> record;
     int signalStrength;
 };
 
@@ -41,14 +42,15 @@ class PacketManager {
    private:
     vector<Dot11ProbeResponse> probeResponses;
     vector<Dot11ProbeRequest> probeRequests;
-    int currentStateStartTime = 0;
+    int currentStateStartTime;
     map<mac, RecordObject> store;
-    bool uploadBackend = false;
+    bool disableBackendUpload = false;
     string deviceID;
+    mutex uploadingMutex;
 
     void uploadToBackend();
 
-    void checkWindowEnd();
+    void uploader();
 
     void addAndTickMac(mac macAddress, int signalStrength);
 

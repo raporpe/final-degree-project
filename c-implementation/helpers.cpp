@@ -86,7 +86,6 @@ json getJSON(string url) {
         curl_easy_cleanup(curl);
 
     }
-    cout << response << endl;
     return json::parse(response);
 }
 

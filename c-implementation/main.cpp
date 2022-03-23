@@ -44,51 +44,64 @@ void PacketManager::uploadToBackend() {
 
     string url = "http://" + HOSTNAME + "/v1/state";
 
-    if (uploadBackend) postJSON(url, j);
+    if (!disableBackendUpload) postJSON(url, j);
 
 }
 
 
-void PacketManager::checkWindowEnd() {
-    // Check if time should advance
-    if (getCurrentTime() - currentStateStartTime > WINDOW_TIME) {
-        // Delete the inactive macs
-        int deleted = 0;
-        vector<mac> to_delete;
+void PacketManager::uploader() {
+    while(true) {
+        // Check if time should advance
+        if (getCurrentTime() % WINDOW_TIME == 0) {
+            // Lock the mutex to avoid modifying the store
+            if (debugMode) cout << "Time! adquiring mutex..." << endl;
+            this->uploadingMutex.lock();
+            if (debugMode) cout << "Mutex adquired!" << endl;
+            
+            // Delete the inactive macs
+            int deleted = 0;
+            vector<mac> to_delete;
 
-        for (auto pair : store) {
-            if (pair.second.record.none()) {
-                to_delete.push_back(pair.first);
-                deleted++;
+            for (auto pair : store) {
+                if (pair.second.record.none()) {
+                    to_delete.push_back(pair.first);
+                    deleted++;
+                }
             }
+
+            for (auto del : to_delete) {
+                store.erase(del);
+            }
+
+            int count = getActiveDevices();
+            cout << "-----------------------------------" << endl;
+            cout << "Current state size: " << store.size() << endl;
+            cout << "Active devices -> " << count << endl;
+            cout << "Deleted " << deleted << " records." << endl;
+            cout << "-----------------------------------" << endl;
+
+            // Advance one bit
+            for (auto& pair : store) {
+                pair.second.record <<= 1;
+            }
+
+            // Upload to backend
+            uploadToBackend();
+
+            currentStateStartTime += WINDOW_TIME;
+
+            this->uploadingMutex.unlock();
+            if (debugMode) cout << "Mutex released" << endl;
         }
-
-        for (auto del : to_delete) {
-            store.erase(del);
-        }
-
-        int count = getActiveDevices();
-
-        cout << "Deleted " << deleted << " records." << endl;
-        cout << "Current state size: " << store.size() << endl;
-        cout << "Active devices -> " << count << endl;
-
-        // Advance one bit
-        for (auto& pair : store) {
-            pair.second.record <<= 1;
-        }
-
-        // Upload to backend
-        uploadToBackend();
-
-        currentStateStartTime = getCurrentTime();
+        this_thread::sleep_for(chrono::seconds(1));
     }
 }
 
 void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
-    checkWindowEnd();
-
+    // Do not allow invalid macs (multicast and broadcast)
     if (!isMacValid(macAddress)) return;
+
+    this->uploadingMutex.lock();
 
     if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
@@ -103,17 +116,19 @@ void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
         // Create store 
         RecordObject toStore;
         toStore.signalStrength = signalStrength;
-        toStore.record = bitset<WINDOW_SIZE>(1);
+        toStore.record = bitset<RECORD_SIZE>(1);
 
         // New mac address, register in memory
         store.insert(
             make_pair(macAddress, toStore)
         );
     }
+    this->uploadingMutex.unlock();
+
 }
 
 void PacketManager::tickMac(mac macAddress, int signalStrength) {
-    checkWindowEnd();
+    this->uploadingMutex.lock();
 
     // If exists in the store
     if (store.find(macAddress) != store.end()) {
@@ -122,6 +137,7 @@ void PacketManager::tickMac(mac macAddress, int signalStrength) {
         store[macAddress].signalStrength = (int) store[macAddress].signalStrength * 0.9 + signalStrength * 0.1;
     }
 
+    this->uploadingMutex.unlock();
 }
 
 int PacketManager::getActiveDevices() {
@@ -137,8 +153,13 @@ int PacketManager::getActiveDevices() {
 
 
 PacketManager::PacketManager(bool uploadBackend, string deviceID) {
-    this->uploadBackend = uploadBackend;
+    this->disableBackendUpload = uploadBackend;
     this->deviceID = deviceID;
+    this->currentStateStartTime = getCurrentTime() - (getCurrentTime() % WINDOW_TIME);
+
+    // Start the uploader thread
+    thread upload(&PacketManager::uploader, this);
+    upload.detach();
 }
 
 void PacketManager::registerProbeRequest(Dot11ProbeRequest *frame, int signalStrength) {
@@ -261,6 +282,7 @@ int main(int argc, char *argv[]) {
     cout << "Starting channel switcher..." << endl;
 
     thread t1(channel_switcher, interface);
+    t1.detach();
 
     cout << "Starting capture..." << endl;
 
@@ -269,7 +291,6 @@ int main(int argc, char *argv[]) {
     config.set_immediate_mode(true);
     
     Sniffer sniffer(interface, config);
-
 
     PacketManager *packetManager = new PacketManager(disableUpload, deviceID);
 
