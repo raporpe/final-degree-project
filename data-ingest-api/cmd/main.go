@@ -18,19 +18,14 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
-type SystemState map[string]DeviceState
+var systemState = make(map[string]map[int]MacState)
 
-type DeviceState struct {
-	DeviceID  string
-	MacStates map[int]MacState
-}
+type DeviceState map[int]MacState
 
 type MacState struct {
-	State          State
-	SignalStrength int64
+	Record         Record `json:"record"`
+	SignalStrength int64  `json:"signal_strength"`
 }
-
-var systemState SystemState
 
 func main() {
 
@@ -83,37 +78,44 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StateHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	CheckError(err)
+	switch r.Method {
+	case "GET":
+		response, err := json.Marshal(systemState)
+		CheckError(err)
 
-	var state UploadedState
+		w.Header().Add("Content-type", "application/json")
+		w.Write(response)
 
-	err = json.Unmarshal(body, &state)
-	CheckError(err)
+	case "POST":
+		body, err := ioutil.ReadAll(r.Body)
+		CheckError(err)
 
-	go StoreState(state)
+		var state UploadedState
 
+		err = json.Unmarshal(body, &state)
+		CheckError(err)
+
+		go StoreState(state)
+	}
 }
 
-func StoreState(uploadedState UploadedState) {
-	fmt.Println("Storing state from " + uploadedState.DeviceID)
+func StoreState(uState UploadedState) {
+	fmt.Println("Storing state from " + uState.DeviceID)
 
-	for _, s := range uploadedState.States {
+	time := uState.Time / uState.SecondsPerWindow
+	if systemState[uState.DeviceID] == nil {
+		systemState[uState.DeviceID] = make(map[int]MacState)
+	}
+
+	for _, s := range uState.MacStates {
 		// Convert the string to the bitset state
-		newState := NewState(s.State)
-		fmt.Printf("s.State: %v\n", s.State)
-		fmt.Printf("newState: %v\n", newState)
+		newState := NewRecord(s.Record)
 
-		//_, exists := systemState[uploadedState.DeviceID].MacStates[0][s.Mac]
-		//if exists {
-		//	//systemState[0][s.Mac].State.Union(newState)
-		//} else {
-		//	systemState[uploadedState.DeviceID][s.Mac] = MacState{
-		//		State:          *newState,
-		//		SignalStrength: s.SignalStrength,
-		//		LastTime:       1,
-		//	}
-		//}
+		systemState[uState.DeviceID][time] = MacState{
+			Record:         *newState,
+			SignalStrength: int64(s.SignalStrength),
+		}
+
 	}
 
 }
@@ -304,17 +306,24 @@ type OcupationData struct {
 
 type UploadedState struct {
 	DeviceID         string             `json:"device_id"`
-	States           []UploadedMacState `json:"states"`
-	SecondsPerWindow int64              `json:"seconds_per_window"`
-	NumberOfWindows  int64              `json:"number_of_windows"`
-	Time             int64              `json:"time"`
+	MacStates        []UploadedMacState `json:"mac_states"`
+	SecondsPerWindow int                `json:"seconds_per_window"`
+	NumberOfWindows  int                `json:"number_of_windows"`
+	Time             int                `json:"time"`
 }
 
 type UploadedMacState struct {
 	Mac            string `json:"mac"`
-	State          string `json:"state"`
-	SignalStrength int64  `json:"signal_strength"`
+	Record         string `json:"record"`
+	SignalStrength int    `json:"signal_strength"`
 }
+
+type ConfigResponse struct {
+	WindowTime int `json:"window_time"`
+	WindowSize int `json:"window_size"`
+}
+
+// Frames
 
 type ProbeRequestFrame struct {
 	StationMAC string  `json:"station_mac"`
@@ -368,9 +377,4 @@ type ManagementFrame struct {
 	Subtype   string  `json:"subtype"` // So that the string is nullable
 	Frequency int64   `json:"frequency"`
 	Power     int64   `json:"power"`
-}
-
-type ConfigResponse struct {
-	WindowTime int `json:"window_time"`
-	WindowSize int `json:"window_size"`
 }
