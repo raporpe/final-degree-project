@@ -38,8 +38,7 @@ bool isMacValid(mac address) { return true; }
 bool isMacFake(mac address) { return (address[0] & 0x02) == 0x02; }
 
 void postJSON(string url, json j) {
-    CURL *curl;
-    curl = curl_easy_init();
+    auto curl = curl_easy_init();
 
     string jsonString = j.dump();
     if (debugMode) cout << jsonString << endl;
@@ -58,4 +57,24 @@ void postJSON(string url, json j) {
 
         curl_easy_cleanup(curl);
     }
+}
+
+json getJSON(string url) {
+    auto curl = curl_easy_init();
+    string response;
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                    curl_easy_strerror(res));
+        }
+        curl_easy_cleanup(curl);
+
+    }
+    cout << response << endl;
+    return json::parse(response);
 }
