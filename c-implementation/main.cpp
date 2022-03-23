@@ -33,6 +33,7 @@ void PacketManager::uploadToBackend() {
     j2["device_id"] = this->deviceID;
     j2["seconds_per_window"] = FRAME_TIME;
     j2["number_of_windows"] = WINDOW_SIZE;
+    j2["time"] = this->currentSecond;
 
     json states;
     for(auto kv : this->store) {
@@ -242,12 +243,20 @@ int main(int argc, char *argv[]) {
         cout << "You must run this program as root!" << endl;
     }
 
+    // Get config from backend
+    json backendConfig = getJSON("http://" + HOSTNAME + "/v1/config");
+    int w_size = backendConfig["window_size"];
+    int w_time = backendConfig["window_time"];
+
     // Print important information
     cout << "-----------------------" << endl;
     cout << "Capture device: " << interface << endl;
     cout << "Device ID: " << deviceID << endl;
     if (debugMode) cout << "Debug mode enabled!" << endl;
     if (disableUpload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
+    cout << "Window size: " << w_size << endl;
+    cout << "Window time: " << w_time << endl;
+    cout << "" << getJSON("http://" + HOSTNAME + "/v1/config") << endl;
     cout << "-----------------------" << endl;
 
     cout << "Enabling monitor mode in interface " << interface << "..." << endl;
