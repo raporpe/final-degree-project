@@ -59,12 +59,21 @@ void postJSON(string url, json j) {
     }
 }
 
+size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s)
+{
+    size_t newLength = size*nmemb;
+    s->append((char*)contents, newLength);
+
+    return newLength;
+}
+
 json getJSON(string url) {
     auto curl = curl_easy_init();
     string response;
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
         CURLcode res = curl_easy_perform(curl);
@@ -78,3 +87,5 @@ json getJSON(string url) {
     cout << response << endl;
     return json::parse(response);
 }
+
+
