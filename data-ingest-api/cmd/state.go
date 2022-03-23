@@ -63,3 +63,7 @@ func (s *Record) Shift(shift int) {
 		s.Record = s.Record[1:len(s.Record)]
 	}
 }
+
+func (s Record) IsActive() bool {
+	return true
+}
