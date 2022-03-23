@@ -309,7 +309,7 @@ int main(int argc, char *argv[]) {
             packetManager->registerControl(p, signalStrength);
         } else if (Dot11Data *p = pkt.pdu()->find_pdu<Dot11Data>()) {
             mac stationAddress = getStationMAC(p);
-            if (showPackets) cout << "Data frame     -> " << stationAddress << " subtype " << p->subtype() << endl;
+            if (showPackets) cout << "Data frame     -> " << stationAddress << " subtype " << (int) p->subtype() << endl;
             packetManager->registerData(p, signalStrength);
         }
     }
