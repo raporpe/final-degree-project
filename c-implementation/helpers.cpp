@@ -33,7 +33,9 @@ mac getStationMAC(Tins::Dot11Data *frame) {
     }
 }
 
-bool isMacValid(mac address) { return true; }
+bool isMacValid(mac address) {
+    return address.is_unicast(); 
+}
 
 bool isMacFake(mac address) { return (address[0] & 0x02) == 0x02; }
 

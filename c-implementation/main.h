@@ -10,8 +10,8 @@
 using namespace std;
 using namespace Tins;
 
-const int WINDOW_SIZE = 15;
-const int FRAME_TIME = 60;
+const int RECORD_SIZE = 15;
+const int WINDOW_TIME = 60;
 const float ACTIVITY_PERCENTAGE = 0.6;
 extern bool debugMode;
 
@@ -41,14 +41,14 @@ class PacketManager {
    private:
     vector<Dot11ProbeResponse> probeResponses;
     vector<Dot11ProbeRequest> probeRequests;
-    int currentSecond = 0;
+    int currentStateStartTime = 0;
     map<mac, RecordObject> store;
     bool uploadBackend = false;
     string deviceID;
 
     void uploadToBackend();
 
-    void checkTimeIncrease();
+    void checkWindowEnd();
 
     void addAndTickMac(mac macAddress, int signalStrength);
 

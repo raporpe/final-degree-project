@@ -27,9 +27,9 @@ void PacketManager::uploadToBackend() {
 
     json j;
     j["device_id"] = this->deviceID;
-    j["seconds_per_window"] = FRAME_TIME;
-    j["number_of_windows"] = WINDOW_SIZE;
-    j["time"] = this->currentSecond;
+    j["seconds_per_window"] = WINDOW_TIME;
+    j["number_of_windows"] = RECORD_SIZE;
+    j["time"] = this->currentStateStartTime;
 
     json states;
     for(auto kv : this->store) {
@@ -49,9 +49,9 @@ void PacketManager::uploadToBackend() {
 }
 
 
-void PacketManager::checkTimeIncrease() {
+void PacketManager::checkWindowEnd() {
     // Check if time should advance
-    if (getCurrentTime() - currentSecond > FRAME_TIME) {
+    if (getCurrentTime() - currentStateStartTime > WINDOW_TIME) {
         // Delete the inactive macs
         int deleted = 0;
         vector<mac> to_delete;
@@ -81,12 +81,14 @@ void PacketManager::checkTimeIncrease() {
         // Upload to backend
         uploadToBackend();
 
-        currentSecond = getCurrentTime();
+        currentStateStartTime = getCurrentTime();
     }
 }
 
 void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
-    checkTimeIncrease();
+    checkWindowEnd();
+
+    if (!isMacValid(macAddress)) return;
 
     if (store.find(macAddress) != store.end()) {
         // Existing mac address, set last bit to true
@@ -111,7 +113,7 @@ void PacketManager::addAndTickMac(mac macAddress, int signalStrength) {
 }
 
 void PacketManager::tickMac(mac macAddress, int signalStrength) {
-    checkTimeIncrease();
+    checkWindowEnd();
 
     // If exists in the store
     if (store.find(macAddress) != store.end()) {
@@ -126,7 +128,7 @@ int PacketManager::getActiveDevices() {
     // Count the number of active devices
     int count = 0;
     for (auto pair : this->store) {
-        if ((float)pair.second.record.count() / (float)WINDOW_SIZE >=
+        if ((float)pair.second.record.count() / (float)RECORD_SIZE >=
             ACTIVITY_PERCENTAGE)
             count++;
     }
