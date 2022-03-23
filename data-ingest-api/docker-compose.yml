@@ -1,0 +1,18 @@
+version: '2'
+services:
+  nginx:
+    image: nginx
+    volumes:
+    - ./nginx.conf:/etc/nginx/sites-enabled/default.conf
+    ports:
+    - "80:80"
+    environment:
+    - NGINX_HOST=tfg-api.raporpe.dev
+    - NGINX_PORT=80
+    depends_on:
+    - "api"
+  api:
+    build: .
+    ports:
+    - "2000:2000"
+
