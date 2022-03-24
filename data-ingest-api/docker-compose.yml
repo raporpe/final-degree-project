@@ -1,4 +1,4 @@
-version: '2'
+version: "3.9"
 services:
   nginx:
     image: nginx
@@ -13,5 +13,7 @@ services:
   api:
     build: .
     ports:
-    - "3000:2000"
+    - "3000:3000"
+    environment:
+    - API_PORT=3000
 
