@@ -155,4 +155,5 @@ func (s Record) applyMask(mask []bool) []bool {
 		}
 
 	}
+	return s.Record
 }

@@ -7,7 +7,7 @@ COPY go.sum ./
 
 RUN go mod download
 
-COPY cmd/ ./cmd
+COPY cmd/ .
 
 RUN go build -o app
 
