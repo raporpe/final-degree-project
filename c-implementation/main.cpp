@@ -20,7 +20,7 @@ using namespace Tins;
 using namespace std;
 using json = nlohmann::json;
 
-const string HOSTNAME = "https://tfg-server.raporpe.dev";
+const string HOSTNAME = "https://tfg-api.raporpe.dev";
 bool debugMode;
 
 void PacketManager::uploadToBackend() {
