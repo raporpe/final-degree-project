@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"time"
 
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	_ "github.com/lib/pq"
 
 	"github.com/gorilla/mux"
@@ -18,7 +21,7 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
-var systemState = make(map[string]map[int]map[string]MacState)
+var systemState = make(map[string]map[time.Time]map[string]MacState)
 
 type DeviceState map[int]MacState
 
@@ -27,7 +30,25 @@ type MacState struct {
 	SignalStrength int64  `json:"signal_strength"`
 }
 
+type SystemStateStore struct {
+	gorm.Model
+	DeviceID    string
+	Time        time.Time
+	DeviceState string
+}
+
+var gormDB *gorm.DB
+
 func main() {
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", "raulportugues", "tfg")
+
+	var err error
+	gormDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("Failed to connect to database!")
+	}
+
+	gormDB.AutoMigrate(&SystemStateStore{})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/upload", UploadHandler)
@@ -41,7 +62,6 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	var err error
 	macDB, err = oui.OpenStaticFile("oui.txt")
 	CheckError(err)
 
@@ -103,11 +123,11 @@ func StoreState(uState UploadedState) {
 	fmt.Println("Storing state from " + uState.DeviceID)
 
 	deviceID := uState.DeviceID
-	t := uState.Time
+	t := time.Unix(int64(uState.Time), 0)
 
 	// If device is new
 	if systemState[deviceID] == nil {
-		systemState[deviceID] = make(map[int]map[string]MacState)
+		systemState[deviceID] = make(map[time.Time]map[string]MacState)
 	}
 
 	// Time has not been previously registered
@@ -132,7 +152,17 @@ func StoreState(uState UploadedState) {
 
 	}
 
-	StoreOcupationData(uState.DeviceID, activeMacs, time.Unix(int64(uState.Time), 0))
+	StoreOcupationData(uState.DeviceID, activeMacs, t)
+
+	j, err := json.Marshal(uState.MacStates)
+	CheckError(err)
+
+	// Store the state in the DB
+	gormDB.Create(&SystemStateStore{
+		DeviceID:    uState.DeviceID,
+		Time:        t,
+		DeviceState: string(j),
+	})
 
 }
 
