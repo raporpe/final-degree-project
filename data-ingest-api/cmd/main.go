@@ -7,11 +7,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 
 	"github.com/gorilla/mux"
@@ -32,6 +34,7 @@ type MacState struct {
 
 type SystemStateStore struct {
 	gorm.Model
+	ID          uuid.UUID `gorm:"type:uuid;primary_key;"`
 	DeviceID    string
 	Time        time.Time
 	DeviceState string
@@ -55,9 +58,16 @@ func main() {
 	r.HandleFunc("/v1/state", StateHandler)
 	r.HandleFunc("/v1/config", ConfigHandler)
 
+	serverPort := os.Getenv("API_PORT")
+
+	// Default server port
+	if serverPort == "" {
+		serverPort = "2000"
+	}
+
 	server := &http.Server{
 		Handler:      r,
-		Addr:         "0.0.0.0:2000",
+		Addr:         "0.0.0.0:" + serverPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
@@ -65,7 +75,7 @@ func main() {
 	macDB, err = oui.OpenStaticFile("oui.txt")
 	CheckError(err)
 
-	log.Println("Starting server...")
+	log.Println("Starting server on port " + serverPort)
 
 	CheckError(server.ListenAndServe())
 
@@ -154,11 +164,14 @@ func StoreState(uState UploadedState) {
 
 	StoreOcupationData(uState.DeviceID, activeMacs, t)
 
-	j, err := json.Marshal(uState.MacStates)
+	j, err := json.Marshal(systemState[deviceID][t])
 	CheckError(err)
 
 	// Store the state in the DB
+	uuid, err := uuid.NewUUID()
+	CheckError(err)
 	gormDB.Create(&SystemStateStore{
+		ID:          uuid,
 		DeviceID:    uState.DeviceID,
 		Time:        t,
 		DeviceState: string(j),
