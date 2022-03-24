@@ -52,7 +52,7 @@ func main() {
 }
 
 func ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("\"serving config\": %v\n", "serving config")
+	fmt.Printf("Serving config")
 	configResponse := ConfigResponse{
 		WindowTime: 60,
 		WindowSize: 15,
@@ -102,10 +102,9 @@ func StateHandler(w http.ResponseWriter, r *http.Request) {
 func StoreState(uState UploadedState) {
 	fmt.Println("Storing state from " + uState.DeviceID)
 
-	
 	deviceID := uState.DeviceID
 	t := uState.Time
-	
+
 	// If device is new
 	if systemState[deviceID] == nil {
 		systemState[deviceID] = make(map[int]map[string]MacState)
@@ -115,7 +114,7 @@ func StoreState(uState UploadedState) {
 	if systemState[deviceID][t] == nil {
 		systemState[deviceID][t] = make(map[string]MacState)
 	}
-	
+
 	activeMacs := 0
 	// Each iteration is the record of a single mac
 	for _, s := range uState.MacStates {
