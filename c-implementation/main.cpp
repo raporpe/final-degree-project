@@ -20,7 +20,7 @@ using namespace Tins;
 using namespace std;
 using json = nlohmann::json;
 
-const string HOSTNAME = "tfg-server.raporpe.dev:2000";
+const string HOSTNAME = "https://tfg-server.raporpe.dev";
 bool debugMode;
 
 void PacketManager::uploadToBackend() {
@@ -42,7 +42,7 @@ void PacketManager::uploadToBackend() {
 
     j["mac_states"] = states;
 
-    string url = "http://" + HOSTNAME + "/v1/state";
+    string url = HOSTNAME + "/v1/state";
 
     if (!disableBackendUpload) postJSON(url, j);
 
@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Get config from backend
-    json backendConfig = getJSON("http://" + HOSTNAME + "/v1/config");
+    json backendConfig = getJSON(HOSTNAME + "/v1/config");
     int w_size = backendConfig["window_size"];
     int w_time = backendConfig["window_time"];
 
