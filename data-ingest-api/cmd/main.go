@@ -111,26 +111,15 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostStateHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		response, err := json.Marshal(systemState)
-		CheckError(err)
+	body, err := ioutil.ReadAll(r.Body)
+	CheckError(err)
 
-		w.Header().Add("Content-type", "application/json")
-		w.Header().Add("Access-Control-Allow-Origin", "*")
-		w.Write(response)
+	var state UploadedState
 
-	case "POST":
-		body, err := ioutil.ReadAll(r.Body)
-		CheckError(err)
+	err = json.Unmarshal(body, &state)
+	CheckError(err)
 
-		var state UploadedState
-
-		err = json.Unmarshal(body, &state)
-		CheckError(err)
-
-		go StoreState(state)
-	}
+	go StoreState(state)
 }
 
 func GetStateHandler(w http.ResponseWriter, r *http.Request) {
