@@ -10,10 +10,11 @@ services:
     - NGINX_PORT=80
     depends_on:
     - "api"
+    restart: "unless-stopped"
   api:
     build: .
     ports:
     - "3000:3000"
     environment:
     - API_PORT=3000
-
+    restart: "unless-stopped"
