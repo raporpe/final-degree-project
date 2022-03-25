@@ -23,9 +23,7 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
-var systemState = make(SystemState)
-
-type SystemState map[string]map[time.Time]map[string]MacState
+var systemState = make(map[string]map[time.Time]map[string]MacState)
 
 type DeviceState map[int]MacState
 
@@ -126,12 +124,12 @@ func GetStateHandler(w http.ResponseWriter, r *http.Request) {
 	requestedTime, err := time.Parse(time.RFC3339, mux.Vars(r)["time"])
 	CheckError(err)
 
-	var s SystemState
+	s := make(map[string]map[time.Time]map[string]MacState)
 	for device, date := range systemState {
 		s[device] = make(map[time.Time]map[string]MacState)
 		s[device][requestedTime] = date[requestedTime]
 	}
-	response, err := json.Marshal(systemState)
+	response, err := json.Marshal(s)
 	CheckError(err)
 
 	w.Header().Add("Content-type", "application/json")
