@@ -9,7 +9,8 @@ function setup() {
         data = response
 
         Object.keys(data).forEach((device) => {
-            let date = Object.keys(data[device])[0]
+            let dates = Object.keys(data[device])
+            let date = dates[dates.length - 1]
             let macs = Object.keys(data[device][date])
     
             macs.forEach((mac) => {
@@ -38,7 +39,7 @@ class Particle {
     constructor(mac) {
         this.x = random(0, width);
         this.y = random(0, height);
-        this.r = random(1, 8);
+        this.r = 5;
         this.xSpeed = random(-2, 2);
         this.ySpeed = random(-1, 1.5);
         this.mac = mac;
@@ -68,8 +69,8 @@ class Particle {
     joinParticles(particles) {
         particles.forEach(element => {
             let dis = dist(this.x, this.y, element.x, element.y);
-            if (dis < 85) {
-                stroke('rgba(255,255,255,0.04)');
+            if (dis < 200) {
+                stroke('rgba(255,255,255,0.5)');
                 line(this.x, this.y, element.x, element.y);
             }
         });
@@ -88,6 +89,7 @@ function draw() {
     for (let i = 0; i < particles.length; i++) {
         particles[i].moveParticle()
         particles[i].createParticle()
+        particles[i].joinParticles(particles.slice(i));
     }
 
 
