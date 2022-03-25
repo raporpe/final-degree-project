@@ -23,7 +23,9 @@ import (
 var db *sql.DB
 var macDB oui.StaticDB
 
-var systemState = make(map[string]map[time.Time]map[string]MacState)
+var systemState = make(SystemState)
+
+type SystemState map[string]map[time.Time]map[string]MacState
 
 type DeviceState map[int]MacState
 
@@ -55,7 +57,8 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/upload", UploadHandler)
-	r.HandleFunc("/v1/state", StateHandler)
+	r.HandleFunc("/v1/state", PostStateHandler).Methods("POST")
+	r.HandleFunc("/v1/state/{time}", GetStateHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -107,13 +110,14 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func StateHandler(w http.ResponseWriter, r *http.Request) {
+func PostStateHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		response, err := json.Marshal(systemState)
 		CheckError(err)
 
 		w.Header().Add("Content-type", "application/json")
+		w.Header().Add("Access-Control-Allow-Origin", "*")
 		w.Write(response)
 
 	case "POST":
@@ -127,6 +131,24 @@ func StateHandler(w http.ResponseWriter, r *http.Request) {
 
 		go StoreState(state)
 	}
+}
+
+func GetStateHandler(w http.ResponseWriter, r *http.Request) {
+	requestedTime, err := time.Parse(time.RFC3339, mux.Vars(r)["time"])
+	CheckError(err)
+
+	var s SystemState
+	for device, date := range systemState {
+		s[device] = make(map[time.Time]map[string]MacState)
+		s[device][requestedTime] = date[requestedTime]
+	}
+	response, err := json.Marshal(systemState)
+	CheckError(err)
+
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Write(response)
+
 }
 
 func StoreState(uState UploadedState) {
