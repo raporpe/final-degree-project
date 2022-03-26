@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <bitset>
+#include <ctime>
 #include <iostream>
 #include <set>
 #include <string>
@@ -28,7 +29,8 @@ void PacketManager::uploadToBackend() {
     j["device_id"] = this->deviceID;
     j["seconds_per_window"] = WINDOW_TIME;
     j["number_of_windows"] = RECORD_SIZE;
-    j["time"] = this->currentStateStartTime;
+    j["start_time"] = this->currentWindowStartTime;
+    j["end_time"] = this->currentWindowStartTime + WINDOW_TIME;
 
     json macs;
     for (auto kv : *detectedMacs) {
@@ -43,7 +45,7 @@ void PacketManager::uploadToBackend() {
 
     j["detected_macs"] = macs;
 
-    string url = HOSTNAME + "/v1/state";
+    string url = HOSTNAME + "/v1/detected-macs";
 
     if (!disableBackendUpload) postJSON(url, j);
 }
@@ -51,11 +53,9 @@ void PacketManager::uploadToBackend() {
 void PacketManager::uploader() {
     while (true) {
         // Check if time should advance
-        if (getCurrentTime() % WINDOW_TIME == 0) {
+        if (getCurrentTime() > currentWindowStartTime + WINDOW_TIME) {
             // Lock the mutex to avoid modifying the store
-            if (debugMode) cout << "Time! adquiring mutex..." << endl;
             this->uploadingMutex.lock();
-            if (debugMode) cout << "Mutex adquired!" << endl;
 
             cout << "-----------------------------------" << endl;
             cout << "Current pointed macs: " << personalDeviceMacs->size()
@@ -70,12 +70,12 @@ void PacketManager::uploader() {
             delete detectedMacs;
             detectedMacs = new map<mac, MacMetadata>();
 
-            currentStateStartTime += WINDOW_TIME;
+            currentWindowStartTime += WINDOW_TIME;
 
             this->uploadingMutex.unlock();
-            if (debugMode) cout << "Mutex released" << endl;
         }
-        this_thread::sleep_for(chrono::seconds(1));
+        int sleepFor = currentWindowStartTime + WINDOW_TIME - getCurrentTime();
+        this_thread::sleep_for(chrono::seconds(sleepFor));
     }
 }
 
@@ -141,7 +141,7 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
                              bool showPackets) {
     this->disableBackendUpload = uploadBackend;
     this->deviceID = deviceID;
-    this->currentStateStartTime =
+    this->currentWindowStartTime =
         getCurrentTime() - (getCurrentTime() % WINDOW_TIME);
     this->personalDeviceMacs = new unordered_set<mac>();
     this->detectedMacs = new map<mac, MacMetadata>();
@@ -153,26 +153,42 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
 }
 
 void PacketManager::registerFrame(Packet frame) {
+    if (!frame.pdu()->find_pdu<RadioTap>()) {
+        return;
+    }
+
+    if (!frame.pdu()->find_pdu<Dot11>()) {
+        return;
+    }
+
     int signalStrength = frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
-    Dot11 *dot11Frame = frame.pdu()->find_pdu<Dot11>();
-    cout << (int)dot11Frame->type() << endl;
-    switch (dot11Frame->type()) {
-        case Dot11::MANAGEMENT:
-            registerManagement(dot11Frame->find_pdu<Dot11ManagementFrame>(),
-                               signalStrength);
-            break;
-        case Dot11::CONTROL:
-            registerControl(dot11Frame->find_pdu<Dot11Control>(),
-                            signalStrength);
-            break;
-        case Dot11::DATA:
-            registerData(dot11Frame->find_pdu<Dot11Data>(), signalStrength);
-            break;
+
+    if (auto dot11Frame = frame.pdu()->find_pdu<Dot11>()) {
+        switch (dot11Frame->type()) {
+            case Dot11::MANAGEMENT:
+                if (auto f = dot11Frame->find_pdu<Dot11ManagementFrame>()) {
+                    registerManagement(f, signalStrength);
+                }
+                break;
+            case Dot11::CONTROL:
+                if (auto f = dot11Frame->find_pdu<Dot11Control>()) {
+                    registerControl(f, signalStrength);
+                }
+                break;
+            case Dot11::DATA:
+                if (auto f = dot11Frame->find_pdu<Dot11Data>()) {
+                    registerData(f, signalStrength);
+                }
+                break;
+        }
     }
 }
 
 void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
                                        int signalStrength) {
+    if (managementFrame == nullptr) {
+        cout << "NULL managementframe!!!" << endl;
+    }
     if (managementFrame->subtype() == Dot11::ManagementSubtypes::PROBE_REQ) {
         mac stationAddress = managementFrame->addr2();
         if (showPackets) {
@@ -191,7 +207,7 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
         }
         countDevice(stationAddress, signalStrength, Dot11::MANAGEMENT);
 
-    } else if (debugMode && managementFrame->subtype() != 8 &&
+    } else if (false && debugMode && managementFrame->subtype() != 8 &&
                managementFrame->subtype() != 4 &&
                managementFrame->subtype() != 5 &&
                managementFrame->subtype() != 12) {
@@ -202,7 +218,7 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
 
 void PacketManager::registerControl(Dot11Control *controlFrame,
                                     int signalStrength) {
-    if (true) {
+    if (showPackets) {
         cout << "Control frame  -> " << controlFrame->addr1() << " subtype "
              << (int)controlFrame->subtype() << endl;
     }

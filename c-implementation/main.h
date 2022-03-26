@@ -47,7 +47,7 @@ class PacketManager {
     map<mac, MacMetadata>* detectedMacs;
     unordered_set<mac>* personalDeviceMacs;
     bool disableBackendUpload = false;
-    int currentStateStartTime;
+    int currentWindowStartTime;
     mutex uploadingMutex;
     bool showPackets;
     string deviceID;
