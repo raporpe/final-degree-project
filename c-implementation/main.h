@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <atomic>
+#include <unordered_set>
 
 using namespace std;
 using namespace Tins;
@@ -31,43 +33,43 @@ struct UploadJSONData {
     std::vector<ProbeRequest> probeRequests;
 };
 
-struct RecordObject {
-    bitset<RECORD_SIZE> record;
-    int signalStrength;
-};
 
+struct MacMetadata {
+    int detectionCount;
+    int averageSignalStrenght;
+    string signature;
+    vector<int> typeCount;
+};
 
 
 class PacketManager {
    private:
-    vector<Dot11ProbeResponse> probeResponses;
-    vector<Dot11ProbeRequest> probeRequests;
-    int currentStateStartTime;
-    map<mac, RecordObject> store;
+    map<mac, MacMetadata>* detectedMacs;
+    unordered_set<mac>* personalDeviceMacs;
     bool disableBackendUpload = false;
-    string deviceID;
+    int currentStateStartTime;
     mutex uploadingMutex;
+    bool showPackets;
+    string deviceID;
 
     void uploadToBackend();
 
     void uploader();
 
-    void addAndTickMac(mac macAddress, int signalStrength);
+    void countDevice(mac macAddress, int signalStrength, int type);
 
-    void tickMac(mac macAddress, int signalStrength);
+    void countPossibleDevice(mac macAddress, int signalStrength);
 
-    int getActiveDevices();
+    void registerManagement(Dot11ManagementFrame *managementFrame, int signalStrength);
+
+    void registerControl(Dot11Control *controlFrame, int signalStrength);
+
+    void registerData(Dot11Data *dataFrame, int signalStrength);
 
    public:
-    PacketManager(bool uploadBackend, string deviceID);
+    PacketManager(bool uploadBackend, string deviceID, bool showPackets);
 
-    void registerProbeRequest(Dot11ProbeRequest *frame, int signalStrength);
-
-    void registerProbeResponse(Dot11ProbeResponse *frame, int signalStrength);
-
-    void registerControl(Dot11Control *frame, int signalStrength);
-
-    void registerData(Dot11Data *frame, int signalStrength);
+    void registerFrame(Packet frame);
 
 };
 
