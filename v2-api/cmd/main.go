@@ -37,8 +37,8 @@ func main() {
 	gormDB.AutoMigrate(&DetectedMacsTable{})
 
 	r := mux.NewRouter()
-	r.HandleFunc("/v1/state", PostStateHandler).Methods("POST")
-	r.HandleFunc("/v1/state", GetStateHandler).Methods("GET")
+	r.HandleFunc("/v1/detected-macs", PostDetectedMacsHandler).Methods("POST")
+	r.HandleFunc("/v1/detected-macs", GetDetectedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -72,7 +72,7 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(byteJson)
 }
 
-func GetStateHandler(w http.ResponseWriter, r *http.Request) {
+func GetDetectedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
@@ -103,7 +103,7 @@ func GetStateHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func PostStateHandler(w http.ResponseWriter, r *http.Request) {
+func PostDetectedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
