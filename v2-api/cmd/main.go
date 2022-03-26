@@ -101,11 +101,15 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	GetDigestedMacs("test", startTime, endTime)
+	// Read the query param device_id
+	deviceID := r.URL.Query().Get("device_id")
+
+	result := GetDigestedMacs(deviceID, startTime, endTime)
+	w.Write([]byte(result))
 
 }
 
-func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) {
+func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) string {
 
 	// Get data from the database
 	var deviceWindows []DetectedMacDB
@@ -162,6 +166,15 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) {
 		}
 
 	}
+
+	// Return the digested macs
+	jsonReturn, err := json.Marshal(digestedMacs)
+	if err != nil {
+		log.Println("There was an error trying to marshall the final digested macs struct!")
+		return ""
+	}
+
+	return string(jsonReturn)
 
 }
 
