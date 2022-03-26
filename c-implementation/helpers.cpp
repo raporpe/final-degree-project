@@ -64,8 +64,8 @@ json postJSON(string url, json j) {
 
         curl_easy_cleanup(curl);
     }
-
-    return json::parse(response);
+    if (response != "") return json::parse(response);
+    return json::object();
 }
 
 size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s)

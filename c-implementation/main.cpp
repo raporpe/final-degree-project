@@ -50,22 +50,24 @@ void PacketManager::uploadToBackend() {
 }
 
 void PacketManager::syncPersonalMacs() {
-
-    json j = json::array();
+    
+    // Send the current macs first
+    json j;
+    j["device_id"] = this->deviceID;
+    json p = json::array();
     for (auto k : *personalMacs) {
-        j.push_back(k);
+        p.push_back(k.to_string());
     }
+    j["personal_macs"] = p;
 
-    cout << j << endl;
 
     string url = HOSTNAME + "/v1/personal-macs";
     json response = postJSON(url, j);
 
+    // Fill the current macs with the received data 
     for (auto mac : response) {
-        cout << mac << endl;
+        personalMacs->insert(mac.get<string>());
     }
-
-
 
 }
 
@@ -135,8 +137,10 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
             detectedMacs->find(macAddress)->second.detectionCount;
 
         detectedMacs->find(macAddress)->second.averageSignalStrenght =
-            oldAverageSignal * (signalStrength - oldAverageSignal) /
-            detectionCount;
+            ((oldAverageSignal * detectionCount) + signalStrength) /
+            (detectionCount + 1);
+
+        cout << "signal " << detectedMacs->find(macAddress)->second.averageSignalStrenght << endl;
 
         // Increase the detection count
         detectedMacs->find(macAddress)->second.detectionCount++;
@@ -171,6 +175,9 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
 
+    // Sync the macs with the backend
+    this->syncPersonalMacs();
+
     // Start the uploader thread
     thread upload(&PacketManager::uploader, this);
     upload.detach();
@@ -185,7 +192,7 @@ void PacketManager::registerFrame(Packet frame) {
         return;
     }
 
-    int signalStrength = frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
+    int signalStrength = -frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
 
     if (auto dot11Frame = frame.pdu()->find_pdu<Dot11>()) {
         switch (dot11Frame->type()) {
@@ -291,6 +298,7 @@ int main(int argc, char *argv[]) {
     // Get config from backend
     json backendConfig = getJSON(HOSTNAME + "/v1/config");
     int secondsPerWindow = backendConfig["seconds_per_window"];
+
 
     // Print important information
     cout << "-----------------------" << endl;
