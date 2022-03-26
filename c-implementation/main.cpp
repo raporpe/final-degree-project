@@ -21,16 +21,15 @@ using namespace Tins;
 using namespace std;
 using json = nlohmann::json;
 
-const string HOSTNAME = "https://tfg-api.raporpe.dev";
+const string HOSTNAME = "http://tfg-api.raporpe.dev:8080";
 bool debugMode;
 
 void PacketManager::uploadToBackend() {
     json j;
     j["device_id"] = this->deviceID;
-    j["seconds_per_window"] = WINDOW_TIME;
-    j["number_of_windows"] = RECORD_SIZE;
+    j["seconds_per_window"] = this->secondsPerWindow;
     j["start_time"] = this->currentWindowStartTime;
-    j["end_time"] = this->currentWindowStartTime + WINDOW_TIME;
+    j["end_time"] = this->currentWindowStartTime + this->secondsPerWindow;
 
     json macs;
     for (auto kv : *detectedMacs) {
@@ -53,14 +52,14 @@ void PacketManager::uploadToBackend() {
 void PacketManager::uploader() {
     while (true) {
         // Check if time should advance
-        if (getCurrentTime() > currentWindowStartTime + WINDOW_TIME) {
+        if (getCurrentTime() > currentWindowStartTime + secondsPerWindow) {
             // Lock the mutex to avoid modifying the store
             this->uploadingMutex.lock();
 
             cout << "-----------------------------------" << endl;
-            cout << "Current pointed macs: " << personalDeviceMacs->size()
+            cout << "Personal devices index size: " << personalDeviceMacs->size()
                  << endl;
-            cout << "Temporary saved macs: " << detectedMacs->size() << endl;
+            cout << "Detected macs for current window: " << detectedMacs->size() << endl;
             cout << "-----------------------------------" << endl;
 
             // Upload to backend
@@ -70,11 +69,11 @@ void PacketManager::uploader() {
             delete detectedMacs;
             detectedMacs = new map<mac, MacMetadata>();
 
-            currentWindowStartTime += WINDOW_TIME;
+            currentWindowStartTime += secondsPerWindow;
 
             this->uploadingMutex.unlock();
         }
-        int sleepFor = currentWindowStartTime + WINDOW_TIME - getCurrentTime();
+        int sleepFor = currentWindowStartTime + secondsPerWindow - getCurrentTime();
         this_thread::sleep_for(chrono::seconds(sleepFor));
     }
 }
@@ -138,11 +137,12 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
 }
 
 PacketManager::PacketManager(bool uploadBackend, string deviceID,
-                             bool showPackets) {
+                             bool showPackets, int secondsPerWindow) {
     this->disableBackendUpload = uploadBackend;
     this->deviceID = deviceID;
+    this->secondsPerWindow = secondsPerWindow;
     this->currentWindowStartTime =
-        getCurrentTime() - (getCurrentTime() % WINDOW_TIME);
+        getCurrentTime() - (getCurrentTime() % secondsPerWindow);
     this->personalDeviceMacs = new unordered_set<mac>();
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
@@ -266,8 +266,7 @@ int main(int argc, char *argv[]) {
 
     // Get config from backend
     json backendConfig = getJSON(HOSTNAME + "/v1/config");
-    int w_size = backendConfig["window_size"];
-    int w_time = backendConfig["window_time"];
+    int secondsPerWindow = backendConfig["seconds_per_window"];
 
     // Print important information
     cout << "-----------------------" << endl;
@@ -275,8 +274,7 @@ int main(int argc, char *argv[]) {
     cout << "Device ID: " << deviceID << endl;
     if (debugMode) cout << "Debug mode enabled!" << endl;
     if (disableUpload) cout << "UPLOAD TO BACKEND DISABLED!" << endl;
-    cout << "Window size: " << w_size << endl;
-    cout << "Window time: " << w_time << endl;
+    cout << "Seconds per window: " << secondsPerWindow << endl;
     cout << "-----------------------" << endl;
 
     cout << "Enabling monitor mode in interface " << interface << "..." << endl;
@@ -308,7 +306,7 @@ int main(int argc, char *argv[]) {
     Sniffer sniffer(interface, config);
 
     PacketManager *packetManager =
-        new PacketManager(disableUpload, deviceID, showPackets);
+        new PacketManager(disableUpload, deviceID, showPackets, secondsPerWindow);
 
     while (true) {
         Packet pkt = sniffer.next_packet();

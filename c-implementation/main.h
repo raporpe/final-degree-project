@@ -13,9 +13,6 @@
 using namespace std;
 using namespace Tins;
 
-const int RECORD_SIZE = 15;
-const int WINDOW_TIME = 60;
-const float ACTIVITY_PERCENTAGE = 0.6;
 extern bool debugMode;
 
 typedef HWAddress<6> mac;
@@ -51,6 +48,7 @@ class PacketManager {
     mutex uploadingMutex;
     bool showPackets;
     string deviceID;
+    int secondsPerWindow;
 
     void uploadToBackend();
 
@@ -67,7 +65,7 @@ class PacketManager {
     void registerData(Dot11Data *dataFrame, int signalStrength);
 
    public:
-    PacketManager(bool uploadBackend, string deviceID, bool showPackets);
+    PacketManager(bool uploadBackend, string deviceID, bool showPackets, int secondsPerWindow);
 
     void registerFrame(Packet frame);
 
