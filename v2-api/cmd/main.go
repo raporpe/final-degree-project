@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -27,7 +28,7 @@ var macDB oui.StaticDB
 var gormDB *gorm.DB
 
 // Window size
-windowSizeSeconds := 60
+var windowSizeSeconds = 60
 
 func main() {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", "raulportugues", "tfg")
@@ -100,40 +101,67 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-	GetDigestedMacs()
-
+	GetDigestedMacs("test", startTime, endTime)
 
 }
 
 func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) {
-	
+
 	// Get data from the database
-	var allWindows []DetectedMacDB
-	gormDB.Where("start_time >= ? and start_time < ?", startTime, endTime).Find(&allWindows)
+	var deviceWindows []DetectedMacDB
+	gormDB.Where("device_id = ? and start_time >= ? and start_time < ? ", deviceID, startTime, endTime).Find(&deviceWindows)
 
 	// Calculate how many windows between
 	secondsBetween := endTime.Sub(startTime).Seconds()
-	windowsBetween := secondsBetween / windowSizeSeconds
+	windowsBetween := int(secondsBetween) / windowSizeSeconds
 
-
-
-
-	digestedMacsToReturn := make(map[string]map[string]MacDigest)
-
-	for _, window := range allWindows {
-		deviceID := window.DeviceID
-		startTime := window.StartTime
-
-		if digestedMacsToReturn[deviceID] == nil {
-			digestedMacsToReturn[deviceID] = make(map[string]MacDigest)
-		}
-
-		digestedMacsToReturn[deviceID][]
-
-
+	// Check that no windows are missing
+	if len(deviceWindows) < windowsBetween {
+		log.Println("Window mismatch!!")
+		fmt.Printf("len(deviceWindows): %v\n", len(deviceWindows))
+		fmt.Printf("windowsBetween: %v\n", windowsBetween)
 	}
 
+	digestedMacs := make(map[string]MacDigest)
+
+	for _, window := range deviceWindows {
+		currentWindowNumber := int(window.StartTime.Sub(startTime).Seconds()) / windowSizeSeconds
+
+		// Generate struct back from db
+		var macMetadata map[string]MacMetadata
+		err := json.Unmarshal([]byte(window.DetectedMacs), &macMetadata)
+		if err != nil {
+			fmt.Printf("Possible data corruption in db for window id %v ", window.ID)
+			// Skip this window since information is not reliable
+			continue
+		}
+
+		// Iterate over all the detected mac addresses
+		for mac, data := range macMetadata {
+			// If the mac exists in digestedMacsToReturn
+			if m, exists := digestedMacs[mac]; exists {
+				c := howManyTrue(m.PresenceRecord)
+				m.AvgSignalStrength = int(math.Round(float64(digestedMacs[mac].AvgSignalStrength*c+data.AverageSignalStrength) / float64(c+1)))
+				m.PresenceRecord[currentWindowNumber] = true
+
+				// Assign new struct
+				digestedMacs[mac] = m
+			} else {
+				// If the mac does no exist, create struct
+				m := MacDigest{
+					AvgSignalStrength: data.AverageSignalStrength,
+					PresenceRecord:    make([]bool, windowsBetween),
+				}
+				// Set the presence record to true
+				m.PresenceRecord[currentWindowNumber] = true
+
+				// Assign new struct
+				digestedMacs[mac] = m
+			}
+
+		}
+
+	}
 
 }
 
@@ -326,6 +354,6 @@ type PersonalMacsDB struct {
 }
 
 type MacDigest struct {
-	AverageSignalStrength int    `json:"average_signal_strenght"`
-	PresenceRecord        []bool `json:"presence_record"`
+	AvgSignalStrength int    `json:"average_signal_strenght"`
+	PresenceRecord    []bool `json:"presence_record"`
 }
