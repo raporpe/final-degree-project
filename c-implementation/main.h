@@ -42,7 +42,7 @@ struct MacMetadata {
 class PacketManager {
    private:
     map<mac, MacMetadata>* detectedMacs;
-    unordered_set<mac>* personalDeviceMacs;
+    unordered_set<mac>* personalMacs;
     bool disableBackendUpload = false;
     int currentWindowStartTime;
     mutex uploadingMutex;
@@ -53,6 +53,8 @@ class PacketManager {
     void uploadToBackend();
 
     void uploader();
+
+    void syncPersonalMacs();
 
     void countDevice(mac macAddress, int signalStrength, int type);
 

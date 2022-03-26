@@ -49,6 +49,27 @@ void PacketManager::uploadToBackend() {
     if (!disableBackendUpload) postJSON(url, j);
 }
 
+void PacketManager::syncPersonalMacs() {
+
+    json j = json::array();
+    for (auto k : *personalMacs) {
+        j.push_back(k);
+    }
+
+    cout << j << endl;
+
+    string url = HOSTNAME + "/v1/personal-macs";
+    json response = postJSON(url, j);
+
+    for (auto mac : response) {
+        cout << mac << endl;
+    }
+
+
+
+}
+
+
 void PacketManager::uploader() {
     while (true) {
         // Check if time should advance
@@ -57,13 +78,16 @@ void PacketManager::uploader() {
             this->uploadingMutex.lock();
 
             cout << "-----------------------------------" << endl;
-            cout << "Personal devices index size: " << personalDeviceMacs->size()
+            cout << "Personal devices index size: " << personalMacs->size()
                  << endl;
             cout << "Detected macs for current window: " << detectedMacs->size() << endl;
             cout << "-----------------------------------" << endl;
 
             // Upload to backend
             uploadToBackend();
+
+            // sync the personal macs
+            syncPersonalMacs();
 
             // Clear the current detectedMacs
             delete detectedMacs;
@@ -88,7 +112,7 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
     this->uploadingMutex.lock();
 
     bool macInPersonalDevice =
-        personalDeviceMacs->find(macAddress) != personalDeviceMacs->end();
+        personalMacs->find(macAddress) != personalMacs->end();
 
     if (!macInPersonalDevice) {
         if (type == Dot11::CONTROL) {
@@ -98,7 +122,7 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
             return;
         } else {
             // Register the mac in the personal devices list
-            personalDeviceMacs->insert(macAddress);
+            personalMacs->insert(macAddress);
         }
     }
 
@@ -143,7 +167,7 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->secondsPerWindow = secondsPerWindow;
     this->currentWindowStartTime =
         getCurrentTime() - (getCurrentTime() % secondsPerWindow);
-    this->personalDeviceMacs = new unordered_set<mac>();
+    this->personalMacs = new unordered_set<mac>();
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
 
