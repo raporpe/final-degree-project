@@ -62,10 +62,9 @@ func main() {
 }
 
 func ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Serving config")
+	fmt.Printf("Serving configuration")
 	configResponse := ConfigResponse{
-		WindowTime: 60,
-		WindowSize: 15,
+		SecondsPerWindow: 60,
 	}
 	byteJson, err := json.Marshal(configResponse)
 	CheckError(err)
@@ -184,8 +183,7 @@ type MacMetadata struct {
 }
 
 type ConfigResponse struct {
-	WindowTime int `json:"window_time"`
-	WindowSize int `json:"window_size"`
+	SecondsPerWindow int `json:"secondsPerWindow"`
 }
 
 type DetectedMacsTable struct {
