@@ -11,6 +11,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -41,6 +42,7 @@ func main() {
 	r.HandleFunc("/v1/detected-macs", DetectedMacsPostHandler).Methods("POST")
 	r.HandleFunc("/v1/detected-macs", DetectedMacsGetHandler).Methods("GET")
 	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
+	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -73,6 +75,16 @@ func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(byteJson)
 }
 
+func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Serving mac digest")
+	configResponse := ConfigResponse{
+		SecondsPerWindow: 60,
+	}
+	byteJson, err := json.Marshal(configResponse)
+	CheckError(err)
+	w.Write(byteJson)
+}
+
 func PersonalMacsHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	CheckError(err)
@@ -85,18 +97,19 @@ func PersonalMacsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Syncing config with " + query.DeviceID)
 	var ret []PersonalMacsDB
 	switch r.Method {
+	case "POST":
+		// Just insert the mac addresses
+		for _, mac := range query.PersonalMacs {
+			gormDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&PersonalMacsDB{
+				Mac: mac,
+			})
+		}
+
 	case "GET":
 		gormDB.Find(&ret)
 		jsonResponse, err := json.Marshal(ret)
 		CheckError(err)
 		w.Write(jsonResponse)
-
-	case "POST":
-		for _, mac := range query.PersonalMacs {
-			gormDB.Create(&PersonalMacsDB{
-				Mac: mac,
-			})
-		}
 
 	}
 }
