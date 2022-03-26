@@ -193,7 +193,7 @@ void PacketManager::registerManagement(Dot11ManagementFrame* managementFrame, in
         }
         countDevice(stationAddress, signalStrength, Dot11::MANAGEMENT);
 
-    } else if (debugMode) {
+    } else if (debugMode && managementFrame->subtype() != 8 && managementFrame->subtype() != 4 && managementFrame->subtype() != 5 && managementFrame->subtype() != 12) {
         cout << "!Mngmnt frame  -> mac " << managementFrame->addr2()  << " subtype " << (int) managementFrame->subtype() << endl;
     }
 
