@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -20,10 +19,8 @@ import (
 	"github.com/klauspost/oui"
 )
 
-var db *sql.DB
+// The mac vendor IEEE database
 var macDB oui.StaticDB
-
-var systemState = make(map[string]map[time.Time]map[string]MacState)
 
 // Database initialization
 var gormDB *gorm.DB
@@ -37,12 +34,11 @@ func main() {
 		panic("Failed to connect to database!")
 	}
 
-	gormDB.AutoMigrate(&SystemStateStore{})
+	gormDB.AutoMigrate(&DetectedMacsTable{})
 
 	r := mux.NewRouter()
-	r.HandleFunc("/v1/upload", UploadHandler)
 	r.HandleFunc("/v1/state", PostStateHandler).Methods("POST")
-	r.HandleFunc("/v1/state/{time}", GetStateHandler).Methods("GET")
+	r.HandleFunc("/v1/state", GetStateHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -76,97 +72,76 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(byteJson)
 }
 
-func UploadHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	CheckError(err)
+func GetStateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	var uploadedData UploadJSON
+	startTime, err := time.Parse(time.RFC3339, mux.Vars(r)["start_time"])
+	if err != nil {
+		log.Println("Invalid start_time!")
+		w.Write([]byte("Invalid start_time"))
+		return
+	}
 
-	err = json.Unmarshal(body, &uploadedData)
-	CheckError(err)
+	endTime, err := time.Parse(time.RFC3339, mux.Vars(r)["start_time"])
+	if err != nil {
+		log.Println("Invalid end_time!")
+		w.Write([]byte("Invalid end_time"))
+		return
+	}
 
-	log.Println("-------------------------------------------")
-	log.Println("Received data from " + uploadedData.DeviceID)
-	go StoreData(&uploadedData)
+	// Get data from the database
+	var ret []DetectedMacsTable
+	gormDB.Where(&DetectedMacsTable{StartTime: startTime, EndTime: endTime}).Find(&ret)
+
+	jsonResponse, err := json.Marshal(ret)
+	if err != nil {
+		log.Println("Error generating json with data from the Detected Macs table!")
+		w.Write([]byte("There was an error serializing request"))
+	}
+	w.Write(jsonResponse)
 
 }
 
 func PostStateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+
 	body, err := ioutil.ReadAll(r.Body)
 	CheckError(err)
 
-	var state UploadedState
+	var state UploadDetectedMacs
 
 	err = json.Unmarshal(body, &state)
 	CheckError(err)
 
-	go StoreState(state)
+	go StoreDetectedMacs(state)
 }
 
-func GetStateHandler(w http.ResponseWriter, r *http.Request) {
-	requestedTime, err := time.Parse(time.RFC3339, mux.Vars(r)["time"])
-	CheckError(err)
+func StoreDetectedMacs(upload UploadDetectedMacs) {
+	fmt.Println("Storing state from " + upload.DeviceID)
 
-	s := make(map[string]map[time.Time]map[string]MacState)
-	for device, date := range systemState {
-		s[device] = make(map[time.Time]map[string]MacState)
-		s[device][requestedTime] = date[requestedTime]
-	}
-	response, err := json.Marshal(s)
-	CheckError(err)
+	// Store the list of detected macs in the DB
 
-	w.Header().Add("Content-type", "application/json")
-	w.Header().Add("Access-Control-Allow-Origin", "*")
-	w.Write(response)
-
-}
-
-func StoreState(uState UploadedState) {
-	fmt.Println("Storing state from " + uState.DeviceID)
-
-	deviceID := uState.DeviceID
-	t := time.Unix(int64(uState.Time), 0)
-
-	// If device is new
-	if systemState[deviceID] == nil {
-		systemState[deviceID] = make(map[time.Time]map[string]MacState)
-	}
-
-	// Time has not been previously registered
-	if systemState[deviceID][t] == nil {
-		systemState[deviceID][t] = make(map[string]MacState)
-	}
-
-	activeMacs := 0
-	// Each iteration is the record of a single mac
-	for _, s := range uState.MacStates {
-		// Convert the string to the bitset state
-		newRecord := NewRecord(s.Record)
-
-		systemState[deviceID][t][s.Mac] = MacState{
-			Record:         *newRecord,
-			SignalStrength: int64(s.SignalStrength),
-		}
-
-		if newRecord.IsActive() {
-			activeMacs++
-		}
-
-	}
-
-	StoreOcupationData(uState.DeviceID, activeMacs, t)
-
-	j, err := json.Marshal(systemState[deviceID][t])
-	CheckError(err)
-
-	// Store the state in the DB
+	// Generate UUID
 	uuid, err := uuid.NewUUID()
-	CheckError(err)
-	gormDB.Create(&SystemStateStore{
-		ID:          uuid,
-		DeviceID:    uState.DeviceID,
-		Time:        t,
-		DeviceState: string(j),
+	if err != nil {
+		log.Print("Error generating UUID for inserting the detected macs! Skip this insertion.")
+		return
+	}
+
+	detectedMacs, err := json.Marshal(upload.DetectedMacs)
+	if err != nil {
+		log.Print("Error remarshalling the detected macs! Can this even happen?")
+		return
+	}
+
+	gormDB.Create(&DetectedMacsTable{
+		ID:           uuid,
+		DeviceID:     upload.DeviceID,
+		StartTime:    time.Unix(int64(upload.StartTime), 0),
+		EndTime:      time.Unix(int64(upload.EndTime), 0),
+		DetectedMacs: string(detectedMacs),
 	})
 
 }
@@ -192,23 +167,20 @@ func CheckError(err error) {
 	}
 }
 
-type OcupationData struct {
-	DeviceID string `json:"device_id"`
-	Count    int64  `json:"count"`
+type UploadDetectedMacs struct {
+	DeviceID         string        `json:"device_id"`
+	DetectedMacs     []MacMetadata `json:"detected_macs"`
+	SecondsPerWindow int           `json:"seconds_per_window"`
+	NumberOfWindows  int           `json:"number_of_windows"`
+	StartTime        int           `json:"start_time"`
+	EndTime          int           `json:"end_time"`
 }
 
-type UploadedState struct {
-	DeviceID         string             `json:"device_id"`
-	MacStates        []UploadedMacState `json:"mac_states"`
-	SecondsPerWindow int                `json:"seconds_per_window"`
-	NumberOfWindows  int                `json:"number_of_windows"`
-	Time             int                `json:"time"`
-}
-
-type UploadedMacState struct {
-	Mac            string `json:"mac"`
-	Record         string `json:"record"`
-	SignalStrength int    `json:"signal_strength"`
+type MacMetadata struct {
+	AverageSignalStrength int    `json:"average_signal_strength"`
+	DetectionCount        int    `json:"detection_count"`
+	Signature             string `json:"signature"`
+	Typecount             []int  `json:"type_count"`
 }
 
 type ConfigResponse struct {
@@ -216,17 +188,10 @@ type ConfigResponse struct {
 	WindowSize int `json:"window_size"`
 }
 
-type DeviceState map[int]MacState
-
-type MacState struct {
-	Record         Record `json:"record"`
-	SignalStrength int64  `json:"signal_strength"`
-}
-
-type SystemStateStore struct {
-	gorm.Model
-	ID          uuid.UUID `gorm:"type:uuid;primary_key;"`
-	DeviceID    string
-	Time        time.Time
-	DeviceState string
+type DetectedMacsTable struct {
+	ID           uuid.UUID `gorm:"type:uuid;primary_key;"`
+	DeviceID     string
+	StartTime    time.Time
+	EndTime      time.Time
+	DetectedMacs string
 }
