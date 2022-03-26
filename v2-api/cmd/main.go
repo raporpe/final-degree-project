@@ -34,7 +34,7 @@ func main() {
 		panic("Failed to connect to database!")
 	}
 
-	gormDB.AutoMigrate(&DetectedMacsTable{})
+	gormDB.AutoMigrate(&DetectedMacDB{})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/detected-macs", DetectedMacsPostHandler).Methods("POST")
@@ -75,14 +75,14 @@ func DetectedMacsGetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	startTime, err := time.Parse(time.RFC3339, mux.Vars(r)["start_time"])
+	startTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
 	if err != nil {
-		log.Println("Invalid start_time!")
+		log.Println("Invalid start_time!: " + err.Error())
 		w.Write([]byte("Invalid start_time"))
 		return
 	}
 
-	endTime, err := time.Parse(time.RFC3339, mux.Vars(r)["start_time"])
+	endTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
 	if err != nil {
 		log.Println("Invalid end_time!")
 		w.Write([]byte("Invalid end_time"))
@@ -90,10 +90,27 @@ func DetectedMacsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get data from the database
-	var ret []DetectedMacsTable
-	gormDB.Where(&DetectedMacsTable{StartTime: startTime, EndTime: endTime}).Find(&ret)
+	var ret []DetectedMacDB
+	gormDB.Where("start_time >= ? and start_time < ?", startTime, endTime).Find(&ret)
 
-	jsonResponse, err := json.Marshal(ret)
+	response := make(map[time.Time]map[string]ReturnDetectedMacs)
+	for _, elem := range ret {
+		var d map[string]MacMetadata
+		err := json.Unmarshal([]byte(elem.DetectedMacs), &d)
+		CheckError(err)
+
+		if response[elem.EndTime] == nil {
+			response[elem.EndTime] = make(map[string]ReturnDetectedMacs)
+		}
+
+		response[elem.EndTime][elem.DeviceID] = ReturnDetectedMacs{
+			DetectedMacs:     d,
+			SecondsPerWindow: elem.SecondsPerWindow,
+			EndTime:          elem.EndTime,
+		}
+	}
+
+	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		log.Println("Error generating json with data from the Detected Macs table!")
 		w.Write([]byte("There was an error serializing request"))
@@ -135,7 +152,7 @@ func StoreDetectedMacs(upload UploadDetectedMacs) {
 		return
 	}
 
-	gormDB.Create(&DetectedMacsTable{
+	gormDB.Create(&DetectedMacDB{
 		ID:           uuid,
 		DeviceID:     upload.DeviceID,
 		StartTime:    time.Unix(int64(upload.StartTime), 0),
@@ -167,12 +184,27 @@ func CheckError(err error) {
 }
 
 type UploadDetectedMacs struct {
-	DeviceID         string        `json:"device_id"`
-	DetectedMacs     []MacMetadata `json:"detected_macs"`
-	SecondsPerWindow int           `json:"seconds_per_window"`
-	NumberOfWindows  int           `json:"number_of_windows"`
-	StartTime        int           `json:"start_time"`
-	EndTime          int           `json:"end_time"`
+	DeviceID         string                 `json:"device_id"`
+	DetectedMacs     map[string]MacMetadata `json:"detected_macs"`
+	SecondsPerWindow int                    `json:"seconds_per_window"`
+	StartTime        int                    `json:"start_time"`
+	EndTime          int                    `json:"end_time"`
+}
+
+type DetectedMacDB struct {
+	ID               uuid.UUID `gorm:"type:uuid;primary_key;" json:"-"`
+	DeviceID         string    `json:"device_id"`
+	DetectedMacs     string    `json:"detected_macs"`
+	SecondsPerWindow int       `json:"seconds_per_window"`
+	StartTime        time.Time `json:"start_time"`
+	EndTime          time.Time `json:"end_time"`
+}
+
+type ReturnDetectedMacs struct {
+	DeviceID         string                 `json:"device_id"`
+	DetectedMacs     map[string]MacMetadata `json:"detected_macs"`
+	SecondsPerWindow int                    `json:"seconds_per_window"`
+	EndTime          time.Time              `json:"end_time"`
 }
 
 type MacMetadata struct {
@@ -183,13 +215,5 @@ type MacMetadata struct {
 }
 
 type ConfigResponse struct {
-	SecondsPerWindow int `json:"secondsPerWindow"`
-}
-
-type DetectedMacsTable struct {
-	ID           uuid.UUID `gorm:"type:uuid;primary_key;"`
-	DeviceID     string
-	StartTime    time.Time
-	EndTime      time.Time
-	DetectedMacs string
+	SecondsPerWindow int `json:"seconds_per_window"`
 }
