@@ -35,10 +35,12 @@ func main() {
 	}
 
 	gormDB.AutoMigrate(&DetectedMacDB{})
+	gormDB.AutoMigrate(&PersonalMacsDB{})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/v1/detected-macs", DetectedMacsPostHandler).Methods("POST")
 	r.HandleFunc("/v1/detected-macs", DetectedMacsGetHandler).Methods("GET")
+	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -69,6 +71,34 @@ func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
 	byteJson, err := json.Marshal(configResponse)
 	CheckError(err)
 	w.Write(byteJson)
+}
+
+func PersonalMacsHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	CheckError(err)
+
+	var query PersonalMacsUpload
+
+	err = json.Unmarshal(body, &query)
+	CheckError(err)
+
+	log.Println("Syncing config with " + query.DeviceID)
+	var ret []PersonalMacsDB
+	switch r.Method {
+	case "GET":
+		gormDB.Find(&ret)
+		jsonResponse, err := json.Marshal(ret)
+		CheckError(err)
+		w.Write(jsonResponse)
+
+	case "POST":
+		for _, mac := range query.PersonalMacs {
+			gormDB.Create(&PersonalMacsDB{
+				Mac: mac,
+			})
+		}
+
+	}
 }
 
 func DetectedMacsGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -216,4 +246,13 @@ type MacMetadata struct {
 
 type ConfigResponse struct {
 	SecondsPerWindow int `json:"seconds_per_window"`
+}
+
+type PersonalMacsUpload struct {
+	DeviceID     string   `json:"device_id"`
+	PersonalMacs []string `json:"personal_macs"`
+}
+
+type PersonalMacsDB struct {
+	Mac string `gorm:"primary_key" json:"mac"`
 }
