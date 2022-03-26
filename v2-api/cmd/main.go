@@ -149,7 +149,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 			// If the mac exists in digestedMacsToReturn
 			if m, exists := digestedMacs[mac]; exists {
 				c := howManyTrue(m.PresenceRecord)
-				m.AvgSignalStrength = int(math.Round(float64(digestedMacs[mac].AvgSignalStrength*c+data.AverageSignalStrength) / float64(c+1)))
+				m.AvgSignalStrength = int(math.Round(float64((digestedMacs[mac].AvgSignalStrength*c)+data.AverageSignalStrength) / float64(c+1)))
 				m.PresenceRecord[currentWindowNumber] = true
 
 				// Assign new struct
