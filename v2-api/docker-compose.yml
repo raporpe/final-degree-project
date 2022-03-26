@@ -14,7 +14,7 @@ services:
   api:
     build: .
     ports:
-    - "3000:3000"
+    - "5000:3000"
     environment:
     - API_PORT=3000
     restart: "unless-stopped"
