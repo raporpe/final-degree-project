@@ -77,12 +77,7 @@ func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
 
 func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Serving mac digest")
-	configResponse := ConfigResponse{
-		SecondsPerWindow: 60,
-	}
-	byteJson, err := json.Marshal(configResponse)
-	CheckError(err)
-	w.Write(byteJson)
+
 }
 
 func PersonalMacsHandler(w http.ResponseWriter, r *http.Request) {
@@ -96,22 +91,24 @@ func PersonalMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Syncing config with " + query.DeviceID)
 	var ret []PersonalMacsDB
-	switch r.Method {
-	case "POST":
+	if r.Method == "POST" {
 		// Just insert the mac addresses
 		for _, mac := range query.PersonalMacs {
 			gormDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&PersonalMacsDB{
 				Mac: mac,
 			})
 		}
-
-	case "GET":
-		gormDB.Find(&ret)
-		jsonResponse, err := json.Marshal(ret)
-		CheckError(err)
-		w.Write(jsonResponse)
-
 	}
+
+	gormDB.Find(&ret)
+	var response []string
+	for _, elem := range ret {
+		response = append(response, elem.Mac)
+	}
+	jsonResponse, err := json.Marshal(response)
+	CheckError(err)
+	w.Write(jsonResponse)
+
 }
 
 func DetectedMacsGetHandler(w http.ResponseWriter, r *http.Request) {
