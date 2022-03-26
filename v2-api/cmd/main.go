@@ -103,6 +103,10 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Read the query param device_id
 	deviceID := r.URL.Query().Get("device_id")
+	if deviceID == "" {
+		w.Write([]byte("device_id required"))
+		return
+	}
 
 	result := GetDigestedMacs(deviceID, startTime, endTime)
 	w.Write([]byte(result))
