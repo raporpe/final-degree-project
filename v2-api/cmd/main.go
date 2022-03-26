@@ -26,6 +26,9 @@ var macDB oui.StaticDB
 // Database initialization
 var gormDB *gorm.DB
 
+// Window size
+windowSizeSeconds := 60
+
 func main() {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", "raulportugues", "tfg")
 
@@ -77,6 +80,60 @@ func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
 
 func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Serving mac digest")
+
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+
+	// Read the query param start_time
+	startTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
+	if err != nil {
+		log.Println("Invalid start_time!: " + err.Error())
+		w.Write([]byte("Invalid start_time"))
+		return
+	}
+
+	// Read the query param end_time
+	endTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
+	if err != nil {
+		log.Println("Invalid end_time!")
+		w.Write([]byte("Invalid end_time"))
+		return
+	}
+
+
+	GetDigestedMacs()
+
+
+}
+
+func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) {
+	
+	// Get data from the database
+	var allWindows []DetectedMacDB
+	gormDB.Where("start_time >= ? and start_time < ?", startTime, endTime).Find(&allWindows)
+
+	// Calculate how many windows between
+	secondsBetween := endTime.Sub(startTime).Seconds()
+	windowsBetween := secondsBetween / windowSizeSeconds
+
+
+
+
+	digestedMacsToReturn := make(map[string]map[string]MacDigest)
+
+	for _, window := range allWindows {
+		deviceID := window.DeviceID
+		startTime := window.StartTime
+
+		if digestedMacsToReturn[deviceID] == nil {
+			digestedMacsToReturn[deviceID] = make(map[string]MacDigest)
+		}
+
+		digestedMacsToReturn[deviceID][]
+
+
+	}
+
 
 }
 
@@ -193,11 +250,12 @@ func StoreDetectedMacs(upload UploadDetectedMacs) {
 	}
 
 	gormDB.Create(&DetectedMacDB{
-		ID:           uuid,
-		DeviceID:     upload.DeviceID,
-		StartTime:    time.Unix(int64(upload.StartTime), 0),
-		EndTime:      time.Unix(int64(upload.EndTime), 0),
-		DetectedMacs: string(detectedMacs),
+		ID:               uuid,
+		DeviceID:         upload.DeviceID,
+		SecondsPerWindow: upload.SecondsPerWindow,
+		StartTime:        time.Unix(int64(upload.StartTime), 0),
+		EndTime:          time.Unix(int64(upload.EndTime), 0),
+		DetectedMacs:     string(detectedMacs),
 	})
 
 }
@@ -265,4 +323,9 @@ type PersonalMacsUpload struct {
 
 type PersonalMacsDB struct {
 	Mac string `gorm:"primary_key" json:"mac"`
+}
+
+type MacDigest struct {
+	AverageSignalStrength int    `json:"average_signal_strenght"`
+	PresenceRecord        []bool `json:"presence_record"`
 }
