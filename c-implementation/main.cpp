@@ -30,7 +30,7 @@ void PacketManager::uploadToBackend() {
     j["seconds_per_window"] = WINDOW_TIME;
     j["number_of_windows"] = RECORD_SIZE;
     j["start_time"] = this->currentWindowStartTime;
-    j["end_time"] = this->currentWindowStartTime + chrono::seconds(WINDOW_TIME);
+    j["end_time"] = this->currentWindowStartTime + WINDOW_TIME;
 
     json macs;
     for (auto kv : *detectedMacs) {
