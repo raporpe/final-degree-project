@@ -104,7 +104,7 @@ void PacketManager::uploader() {
     }
 }
 
-void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
+void PacketManager::countDevice(mac macAddress, double signalStrength, int type) {
     // Do not allow invalid macs (multicast and broadcast)
     if (!isMacValid(macAddress)) return;
 
@@ -131,7 +131,7 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
     // If the mac address has already been counted in this window
     if (detectedMacs->find(macAddress) != detectedMacs->end()) {
         // Get the current signal average and detection count
-        int oldAverageSignal =
+        double oldAverageSignal =
             detectedMacs->find(macAddress)->second.averageSignalStrenght;
         int detectionCount =
             detectedMacs->find(macAddress)->second.detectionCount;
@@ -139,8 +139,6 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
         detectedMacs->find(macAddress)->second.averageSignalStrenght =
             ((oldAverageSignal * detectionCount) + signalStrength) /
             (detectionCount + 1);
-
-        cout << "signal " << detectedMacs->find(macAddress)->second.averageSignalStrenght << endl;
 
         // Increase the detection count
         detectedMacs->find(macAddress)->second.detectionCount++;
@@ -192,7 +190,8 @@ void PacketManager::registerFrame(Packet frame) {
         return;
     }
 
-    int signalStrength = -frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
+    double signalStrength = frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
+    signalStrength = 1000000000.0 * pow(10, signalStrength/10.0); // Convert to pW (10^-12)
 
     if (auto dot11Frame = frame.pdu()->find_pdu<Dot11>()) {
         switch (dot11Frame->type()) {
@@ -216,7 +215,7 @@ void PacketManager::registerFrame(Packet frame) {
 }
 
 void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
-                                       int signalStrength) {
+                                       double signalStrength) {
     if (managementFrame == nullptr) {
         cout << "NULL managementframe!!!" << endl;
     }
@@ -248,7 +247,7 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
 }
 
 void PacketManager::registerControl(Dot11Control *controlFrame,
-                                    int signalStrength) {
+                                    double signalStrength) {
     if (showPackets) {
         cout << "Control frame  -> " << controlFrame->addr1() << " subtype "
              << (int)controlFrame->subtype() << endl;
@@ -258,7 +257,7 @@ void PacketManager::registerControl(Dot11Control *controlFrame,
     countDevice(address, signalStrength, Dot11::CONTROL);
 }
 
-void PacketManager::registerData(Dot11Data *dataFrame, int signalStrength) {
+void PacketManager::registerData(Dot11Data *dataFrame, double signalStrength) {
     if (showPackets) {
         mac stationAddress = getStationMAC(dataFrame);
         cout << "Data frame     -> " << stationAddress << " subtype "
