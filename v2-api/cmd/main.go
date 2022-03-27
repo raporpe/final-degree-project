@@ -69,7 +69,7 @@ func main() {
 }
 
 func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Serving configuration")
+	log.Println("Serving configuration")
 	configResponse := ConfigResponse{
 		SecondsPerWindow: 60,
 	}
@@ -79,7 +79,7 @@ func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Serving mac digest")
+	log.Println("Serving mac digest")
 
 	w.Header().Add("Content-type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
@@ -115,37 +115,116 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) string {
 
 	// Get data from the database
-	var deviceWindows []DetectedMacDB
-	gormDB.Where("device_id = ? and start_time >= ? and start_time < ? ", deviceID, startTime, endTime).Find(&deviceWindows)
+	var windowsInDB []DetectedMacDB
+	gormDB.Where("device_id = ? and start_time >= ? and start_time < ? ", deviceID, startTime, endTime).Find(&windowsInDB)
 
-	// Calculate how many windows between
-	secondsBetween := endTime.Sub(startTime).Seconds()
-	windowsBetween := int(secondsBetween) / windowSizeSeconds
+	//.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.
+	// PHASE 1 -> Data consistency check
+	//.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.
 
-	// Check that no windows are missing
-	if len(deviceWindows) < windowsBetween {
-		log.Println("Window mismatch!!")
-		fmt.Printf("len(deviceWindows): %v\n", len(deviceWindows))
-		fmt.Printf("windowsBetween: %v\n", windowsBetween)
+	// Generate the start time of all the windows that should be in DB
+	var expectedStartTimes []time.Time
+	for expectedTime := startTime; expectedTime.Before(endTime); expectedTime = timePlusWindow(expectedTime, 1, windowSizeSeconds) {
+		expectedStartTimes = append(expectedStartTimes, expectedTime)
 	}
 
+	// How many windows there should be
+	expectedWindowsBetween := len(expectedStartTimes)
+
+	// The number of windows that are in the database for the device and time range
+	realWindowsBetween := len(windowsInDB)
+
+	// Check that the number of windows in DB are the expected ones
+	if realWindowsBetween != expectedWindowsBetween {
+		log.Printf("Window mismatch!!. There are %v but %v were expected", realWindowsBetween, expectedWindowsBetween)
+		log.Printf("realWindowsBetween: %v\n", len(windowsInDB))
+		log.Printf("windowsBetween: %v\n", expectedWindowsBetween)
+	}
+
+	// Check that no window is repeated or missing
+	inconsistentData := false
+	inconsistentTimes := make([]time.Time, 0)
+
+	for _, checkingTime := range expectedStartTimes {
+		matchInDB := false
+		multipleMatchInDB := false
+
+		// For every expected time there exists a window in DB with that same start time
+		for _, checkingWindow := range windowsInDB {
+			if checkingWindow.StartTime.Equal(checkingTime) {
+
+				// The first time that matches
+				if !matchInDB {
+					matchInDB = true
+					log.Printf("Correct match! %v\n", checkingTime)
+				} else {
+					// If it had already matched
+					multipleMatchInDB = true
+					log.Printf("Double match! %v\n", checkingTime)
+				}
+			}
+		}
+
+		if !matchInDB || multipleMatchInDB {
+			inconsistentData = true
+			inconsistentTimes = append(inconsistentTimes, checkingTime)
+			log.Printf("There is an inconsistency for date %v, match:%v, multipleMatch:%v\n", checkingTime, matchInDB, multipleMatchInDB)
+		}
+
+	}
+
+	if inconsistentData {
+		log.Println("There is an inconsistency in the data!")
+	}
+
+	//.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.
+	// PHASE 2 -> Generate information that will be returned
+	//.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.
+
+	// Where the digested macs will be stored
 	digestedMacs := make(map[string]MacDigest)
 
-	for _, window := range deviceWindows {
-		currentWindowNumber := int(window.StartTime.Sub(startTime).Seconds()) / windowSizeSeconds
+	// Generate the data for every expected time
+	for _, expectedTime := range expectedStartTimes {
 
-		// Generate struct back from db
+		// If the current expectedTime was marked inconsistent, skip it
+		skip := false
+		for _, i := range inconsistentTimes {
+			if i.Equal(expectedTime) {
+				skip = true
+				log.Printf("SKIPPING windo w.StartTime: %v\n", expectedTime)
+			}
+		}
+
+		if skip {
+			log.Printf("SKIPPING window.StartTime: %v\n", expectedTime)
+			continue
+		}
+
+		// Get the equivalent window in DB that has the expected time
+		// We guaranteed in the data consistency check that exactly one will exist
+		var window DetectedMacDB
+		for _, w := range windowsInDB {
+			if w.StartTime.Equal(expectedTime) {
+				window = w
+			}
+		}
+
+		currentWindowNumber := int(window.StartTime.Sub(startTime).Seconds()) / windowSizeSeconds
+		log.Printf("currentWindowNumber: %v\n", currentWindowNumber)
+
+		// Generate the mac metadata struct back from db
 		var macMetadata map[string]MacMetadata
 		err := json.Unmarshal([]byte(window.DetectedMacs), &macMetadata)
 		if err != nil {
-			fmt.Printf("Possible data corruption in db for window id %v ", window.ID)
-			// Skip this window since information is not reliable
+			log.Printf("Possible data corruption in db for window id %v ", window.ID)
+			// Skip this window since information is not reliable in db
 			continue
 		}
 
 		// Iterate over all the detected mac addresses
 		for mac, data := range macMetadata {
-			// If the mac exists in digestedMacsToReturn
+			// If the mac exists in digestedMacs
 			if m, exists := digestedMacs[mac]; exists {
 				c := howManyTrue(m.PresenceRecord)
 				m.AvgSignalStrength = ((digestedMacs[mac].AvgSignalStrength * float64(c)) + data.AverageSignalStrength) / float64(c+1)
@@ -154,15 +233,16 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 				m.TypeCount[1] += data.TypeCount[1]
 				m.TypeCount[2] += data.TypeCount[2]
 
-				// Assign new struct
+				// Assign the modified struct to the digested macs
 				digestedMacs[mac] = m
 			} else {
 				// If the mac does no exist, create struct
 				m := MacDigest{
 					AvgSignalStrength: data.AverageSignalStrength,
-					PresenceRecord:    make([]bool, windowsBetween),
+					PresenceRecord:    make([]bool, expectedWindowsBetween),
 					TypeCount:         data.TypeCount,
-					Manufacturer:      GetVendor(mac),
+					Manufacturer:      GetMacVendor(mac),
+					OuiID:             GetMacPrefix(mac),
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -177,11 +257,21 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 
 	// Return the digested macs
 	jsonReturn, err := json.Marshal(&struct {
-		Digest          map[string]MacDigest `json:"digest"`
-		NumberOfWindows int                  `json:"number_of_windows"`
+		NumberOfWindows   int                  `json:"number_of_windows"`
+		WindowsStartTimes []time.Time          `json:"windows_start_times"`
+		StartTime         time.Time            `json:"start_time"`
+		EndTime           time.Time            `json:"end_time"`
+		InconsistentData  bool                 `json:"inconsistent_data"`
+		InconsistentTimes []time.Time          `json:"inconsistent_times"`
+		Digest            map[string]MacDigest `json:"digest"`
 	}{
-		Digest:          digestedMacs,
-		NumberOfWindows: windowsBetween,
+		NumberOfWindows:   expectedWindowsBetween,
+		WindowsStartTimes: expectedStartTimes,
+		StartTime:         startTime,
+		EndTime:           timePlusWindow(startTime, expectedWindowsBetween, windowSizeSeconds),
+		Digest:            digestedMacs,
+		InconsistentData:  inconsistentData,
+		InconsistentTimes: inconsistentTimes,
 	})
 	if err != nil {
 		log.Println("There was an error trying to marshall the final digested macs struct!")
@@ -287,9 +377,7 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StoreDetectedMacs(upload UploadDetectedMacs) {
-	fmt.Println("Storing state from " + upload.DeviceID)
-
-	// Store the list of detected macs in the DB
+	log.Println("Storing detected macs from " + upload.DeviceID)
 
 	// Generate UUID
 	uuid, err := uuid.NewUUID()
@@ -304,6 +392,7 @@ func StoreDetectedMacs(upload UploadDetectedMacs) {
 		return
 	}
 
+	// Store the list of detected macs in the DB
 	gormDB.Create(&DetectedMacDB{
 		ID:               uuid,
 		DeviceID:         upload.DeviceID,
@@ -315,7 +404,7 @@ func StoreDetectedMacs(upload UploadDetectedMacs) {
 
 }
 
-func GetVendor(mac string) *string {
+func GetMacVendor(mac string) *string {
 	if macDB == nil {
 		var err error
 		macDB, err = oui.OpenStaticFile("oui.txt")
@@ -327,6 +416,21 @@ func GetVendor(mac string) *string {
 		return nil
 	} else {
 		return &result.Manufacturer
+	}
+}
+
+func GetMacPrefix(mac string) string {
+	if macDB == nil {
+		var err error
+		macDB, err = oui.OpenStaticFile("oui.txt")
+		CheckError(err)
+	}
+
+	result, err := macDB.Query(mac)
+	if err != nil {
+		return ""
+	} else {
+		return result.Prefix.String()
 	}
 }
 
@@ -351,6 +455,10 @@ type DetectedMacDB struct {
 	SecondsPerWindow int       `json:"seconds_per_window"`
 	StartTime        time.Time `json:"start_time"`
 	EndTime          time.Time `json:"end_time"`
+}
+
+func (DetectedMacDB) TableName() string {
+	return "detected_macs"
 }
 
 type ReturnDetectedMacs struct {
@@ -380,9 +488,14 @@ type PersonalMacsDB struct {
 	Mac string `gorm:"primary_key" json:"mac"`
 }
 
+func (PersonalMacsDB) TableName() string {
+	return "personal_macs"
+}
+
 type MacDigest struct {
 	AvgSignalStrength float64 `json:"average_signal_strenght"`
 	Manufacturer      *string `json:"manufacturer"` // Manufacturer is nullable
+	OuiID             string  `json:"oui_id"`
 	TypeCount         [3]int  `json:"type_count"`
 	PresenceRecord    []bool  `json:"presence_record"`
 }
