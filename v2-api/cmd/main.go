@@ -163,6 +163,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 					AvgSignalStrength: data.AverageSignalStrength,
 					PresenceRecord:    make([]bool, windowsBetween),
 					TypeCount:         data.TypeCount,
+					Manufacturer:      GetVendor(mac),
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -177,9 +178,11 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 
 	// Return the digested macs
 	jsonReturn, err := json.Marshal(&struct {
-		Digest map[string]MacDigest `json:"digest"`
+		Digest          map[string]MacDigest `json:"digest"`
+		NumberOfWindows int                  `json:"number_of_windows"`
 	}{
-		Digest: digestedMacs,
+		Digest:          digestedMacs,
+		NumberOfWindows: windowsBetween,
 	})
 	if err != nil {
 		log.Println("There was an error trying to marshall the final digested macs struct!")
@@ -379,7 +382,8 @@ type PersonalMacsDB struct {
 }
 
 type MacDigest struct {
-	AvgSignalStrength int    `json:"average_signal_strenght"`
-	PresenceRecord    []bool `json:"presence_record"`
-	TypeCount         [3]int `json:"packet_type"`
+	AvgSignalStrength int     `json:"average_signal_strenght"`
+	Manufacturer      *string `json:"manufacturer"` // Manufacturer is nullable
+	TypeCount         [3]int  `json:"type_count"`
+	PresenceRecord    []bool  `json:"presence_record"`
 }
