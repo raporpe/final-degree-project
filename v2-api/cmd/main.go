@@ -151,6 +151,9 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 				c := howManyTrue(m.PresenceRecord)
 				m.AvgSignalStrength = int(math.Round(float64((digestedMacs[mac].AvgSignalStrength*c)+data.AverageSignalStrength) / float64(c+1)))
 				m.PresenceRecord[currentWindowNumber] = true
+				m.TypeCount[0] += data.TypeCount[0]
+				m.TypeCount[1] += data.TypeCount[1]
+				m.TypeCount[2] += data.TypeCount[2]
 
 				// Assign new struct
 				digestedMacs[mac] = m
@@ -159,6 +162,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 				m := MacDigest{
 					AvgSignalStrength: data.AverageSignalStrength,
 					PresenceRecord:    make([]bool, windowsBetween),
+					TypeCount:         data.TypeCount,
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -172,7 +176,11 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 	}
 
 	// Return the digested macs
-	jsonReturn, err := json.Marshal(digestedMacs)
+	jsonReturn, err := json.Marshal(&struct {
+		Digest map[string]MacDigest `json:"digest"`
+	}{
+		Digest: digestedMacs,
+	})
 	if err != nil {
 		log.Println("There was an error trying to marshall the final digested macs struct!")
 		return ""
@@ -354,7 +362,7 @@ type MacMetadata struct {
 	AverageSignalStrength int    `json:"average_signal_strength"`
 	DetectionCount        int    `json:"detection_count"`
 	Signature             string `json:"signature"`
-	Typecount             []int  `json:"type_count"`
+	TypeCount             [3]int `json:"type_count"`
 }
 
 type ConfigResponse struct {
@@ -373,4 +381,5 @@ type PersonalMacsDB struct {
 type MacDigest struct {
 	AvgSignalStrength int    `json:"average_signal_strenght"`
 	PresenceRecord    []bool `json:"presence_record"`
+	TypeCount         [3]int `json:"packet_type"`
 }
