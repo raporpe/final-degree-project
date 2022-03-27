@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"time"
@@ -149,7 +148,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 			// If the mac exists in digestedMacsToReturn
 			if m, exists := digestedMacs[mac]; exists {
 				c := howManyTrue(m.PresenceRecord)
-				m.AvgSignalStrength = int(math.Round(float64((digestedMacs[mac].AvgSignalStrength*c)+data.AverageSignalStrength) / float64(c+1)))
+				m.AvgSignalStrength = ((digestedMacs[mac].AvgSignalStrength * float64(c)) + data.AverageSignalStrength) / float64(c+1)
 				m.PresenceRecord[currentWindowNumber] = true
 				m.TypeCount[0] += data.TypeCount[0]
 				m.TypeCount[1] += data.TypeCount[1]
@@ -362,10 +361,10 @@ type ReturnDetectedMacs struct {
 }
 
 type MacMetadata struct {
-	AverageSignalStrength int    `json:"average_signal_strength"`
-	DetectionCount        int    `json:"detection_count"`
-	Signature             string `json:"signature"`
-	TypeCount             [3]int `json:"type_count"`
+	AverageSignalStrength float64 `json:"average_signal_strength"`
+	DetectionCount        int     `json:"detection_count"`
+	Signature             string  `json:"signature"`
+	TypeCount             [3]int  `json:"type_count"`
 }
 
 type ConfigResponse struct {
@@ -382,7 +381,7 @@ type PersonalMacsDB struct {
 }
 
 type MacDigest struct {
-	AvgSignalStrength int     `json:"average_signal_strenght"`
+	AvgSignalStrength float64 `json:"average_signal_strenght"`
 	Manufacturer      *string `json:"manufacturer"` // Manufacturer is nullable
 	TypeCount         [3]int  `json:"type_count"`
 	PresenceRecord    []bool  `json:"presence_record"`
