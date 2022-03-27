@@ -121,11 +121,12 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 	// Calculate how many windows between
 	secondsBetween := endTime.Sub(startTime).Seconds()
 	windowsBetween := int(secondsBetween) / windowSizeSeconds
+	realWindowsBetween := len(deviceWindows)
 
 	// Check that no windows are missing
-	if len(deviceWindows) < windowsBetween {
+	if realWindowsBetween != windowsBetween {
 		log.Println("Window mismatch!!")
-		fmt.Printf("len(deviceWindows): %v\n", len(deviceWindows))
+		fmt.Printf("realWindowsBetween: %v\n", len(deviceWindows))
 		fmt.Printf("windowsBetween: %v\n", windowsBetween)
 	}
 
@@ -160,7 +161,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 				// If the mac does no exist, create struct
 				m := MacDigest{
 					AvgSignalStrength: data.AverageSignalStrength,
-					PresenceRecord:    make([]bool, windowsBetween),
+					PresenceRecord:    make([]bool, realWindowsBetween),
 					TypeCount:         data.TypeCount,
 					Manufacturer:      GetVendor(mac),
 				}
@@ -177,11 +178,15 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 
 	// Return the digested macs
 	jsonReturn, err := json.Marshal(&struct {
-		Digest          map[string]MacDigest `json:"digest"`
 		NumberOfWindows int                  `json:"number_of_windows"`
+		StartTime       time.Time            `json:"start_time"`
+		EndTime         time.Time            `json:"end_time"`
+		Digest          map[string]MacDigest `json:"digest"`
 	}{
+		NumberOfWindows: realWindowsBetween,
+		StartTime:       startTime,
+		EndTime:         startTime.Add(time.Duration(windowSizeSeconds * realWindowsBetween)),
 		Digest:          digestedMacs,
-		NumberOfWindows: windowsBetween,
 	})
 	if err != nil {
 		log.Println("There was an error trying to marshall the final digested macs struct!")
