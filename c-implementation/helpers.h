@@ -17,7 +17,7 @@ bool isMacFake(mac address);
 
 bool isMacValid(mac address);
 
-void postJSON(string url, json j);
+json postJSON(string url, json j);
 
 json getJSON(string url);
 
@@ -27,5 +27,6 @@ void set_monitor_mode(string interface);
 
 bool is_monitor_mode(string interface);
 
+size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s);
 
 #endif

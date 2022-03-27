@@ -40,17 +40,21 @@ bool isMacValid(mac address) {
 
 bool isMacFake(mac address) { return (address[0] & 0x02) == 0x02; }
 
-void postJSON(string url, json j) {
+json postJSON(string url, json j) {
     auto curl = curl_easy_init();
 
     string jsonString = j.dump();
     if (debugMode) cout << jsonString << endl;
+
+    string response;
 
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
         CURLcode res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
@@ -60,6 +64,8 @@ void postJSON(string url, json j) {
 
         curl_easy_cleanup(curl);
     }
+    if (response != "") return json::parse(response);
+    return json::object();
 }
 
 size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s)

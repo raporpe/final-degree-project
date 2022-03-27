@@ -49,6 +49,29 @@ void PacketManager::uploadToBackend() {
     if (!disableBackendUpload) postJSON(url, j);
 }
 
+void PacketManager::syncPersonalMacs() {
+    
+    // Send the current macs first
+    json j;
+    j["device_id"] = this->deviceID;
+    json p = json::array();
+    for (auto k : *personalMacs) {
+        p.push_back(k.to_string());
+    }
+    j["personal_macs"] = p;
+
+
+    string url = HOSTNAME + "/v1/personal-macs";
+    json response = postJSON(url, j);
+
+    // Fill the current macs with the received data 
+    for (auto mac : response) {
+        personalMacs->insert(mac.get<string>());
+    }
+
+}
+
+
 void PacketManager::uploader() {
     while (true) {
         // Check if time should advance
@@ -57,13 +80,16 @@ void PacketManager::uploader() {
             this->uploadingMutex.lock();
 
             cout << "-----------------------------------" << endl;
-            cout << "Personal devices index size: " << personalDeviceMacs->size()
+            cout << "Personal devices index size: " << personalMacs->size()
                  << endl;
             cout << "Detected macs for current window: " << detectedMacs->size() << endl;
             cout << "-----------------------------------" << endl;
 
             // Upload to backend
             uploadToBackend();
+
+            // sync the personal macs
+            syncPersonalMacs();
 
             // Clear the current detectedMacs
             delete detectedMacs;
@@ -88,7 +114,7 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
     this->uploadingMutex.lock();
 
     bool macInPersonalDevice =
-        personalDeviceMacs->find(macAddress) != personalDeviceMacs->end();
+        personalMacs->find(macAddress) != personalMacs->end();
 
     if (!macInPersonalDevice) {
         if (type == Dot11::CONTROL) {
@@ -98,7 +124,7 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
             return;
         } else {
             // Register the mac in the personal devices list
-            personalDeviceMacs->insert(macAddress);
+            personalMacs->insert(macAddress);
         }
     }
 
@@ -111,8 +137,10 @@ void PacketManager::countDevice(mac macAddress, int signalStrength, int type) {
             detectedMacs->find(macAddress)->second.detectionCount;
 
         detectedMacs->find(macAddress)->second.averageSignalStrenght =
-            oldAverageSignal * (signalStrength - oldAverageSignal) /
-            detectionCount;
+            ((oldAverageSignal * detectionCount) + signalStrength) /
+            (detectionCount + 1);
+
+        cout << "signal " << detectedMacs->find(macAddress)->second.averageSignalStrenght << endl;
 
         // Increase the detection count
         detectedMacs->find(macAddress)->second.detectionCount++;
@@ -143,9 +171,12 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->secondsPerWindow = secondsPerWindow;
     this->currentWindowStartTime =
         getCurrentTime() - (getCurrentTime() % secondsPerWindow);
-    this->personalDeviceMacs = new unordered_set<mac>();
+    this->personalMacs = new unordered_set<mac>();
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
+
+    // Sync the macs with the backend
+    this->syncPersonalMacs();
 
     // Start the uploader thread
     thread upload(&PacketManager::uploader, this);
@@ -161,7 +192,7 @@ void PacketManager::registerFrame(Packet frame) {
         return;
     }
 
-    int signalStrength = frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
+    int signalStrength = -frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
 
     if (auto dot11Frame = frame.pdu()->find_pdu<Dot11>()) {
         switch (dot11Frame->type()) {
@@ -267,6 +298,7 @@ int main(int argc, char *argv[]) {
     // Get config from backend
     json backendConfig = getJSON(HOSTNAME + "/v1/config");
     int secondsPerWindow = backendConfig["seconds_per_window"];
+
 
     // Print important information
     cout << "-----------------------" << endl;
