@@ -33,7 +33,7 @@ struct UploadJSONData {
 
 struct MacMetadata {
     int detectionCount;
-    int averageSignalStrenght;
+    double averageSignalStrenght;
     string signature;
     vector<int> typeCount;
 };
@@ -56,15 +56,15 @@ class PacketManager {
 
     void syncPersonalMacs();
 
-    void countDevice(mac macAddress, int signalStrength, int type);
+    void countDevice(mac macAddress, double signalStrength, int type);
 
-    void countPossibleDevice(mac macAddress, int signalStrength);
+    void countPossibleDevice(mac macAddress, double signalStrength);
 
-    void registerManagement(Dot11ManagementFrame *managementFrame, int signalStrength);
+    void registerManagement(Dot11ManagementFrame *managementFrame, double signalStrength);
 
-    void registerControl(Dot11Control *controlFrame, int signalStrength);
+    void registerControl(Dot11Control *controlFrame, double signalStrength);
 
-    void registerData(Dot11Data *dataFrame, int signalStrength);
+    void registerData(Dot11Data *dataFrame, double signalStrength);
 
    public:
     PacketManager(bool uploadBackend, string deviceID, bool showPackets, int secondsPerWindow);
