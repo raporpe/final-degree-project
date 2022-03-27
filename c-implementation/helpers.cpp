@@ -2,12 +2,14 @@
 
 #include <curl/curl.h>
 #include <tins/tins.h>
-#include <json.hpp>
+#include "lib/sqlite3.h"
+#include "json.hpp"
 
 #include <chrono>
+#include <iostream>
+#include <stdexcept>
 
 #include "main.h"
-#include <iostream>
 
 using namespace std::chrono;
 using namespace std;
@@ -35,7 +37,7 @@ mac getStationMAC(Tins::Dot11Data *frame) {
 
 bool isMacValid(mac address) {
     bool isNull = address == mac(nullptr);
-    return address.is_unicast() && !isNull; 
+    return address.is_unicast() && !isNull;
 }
 
 bool isMacFake(mac address) { return (address[0] & 0x02) == 0x02; }
@@ -55,9 +57,16 @@ json postJSON(string url, json j) {
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        CURLcode res = curl_easy_perform(curl);
+
+        CURLcode res;
+        try {
+            CURLcode res = curl_easy_perform(curl);
+        } catch (exception &e) {
+            throw UnavailableBackendException();
+        }
 
         if (res != CURLE_OK) {
+            throw UnavailableBackendException();
             fprintf(stderr, "curl_easy_perform() failed: %s\n",
                     curl_easy_strerror(res));
         }
@@ -68,10 +77,10 @@ json postJSON(string url, json j) {
     return json::object();
 }
 
-size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s)
-{
-    size_t newLength = size*nmemb;
-    s->append((char*)contents, newLength);
+size_t curlWriteCallback(void *contents, size_t size, size_t nmemb,
+                         std::string *s) {
+    size_t newLength = size * nmemb;
+    s->append((char *)contents, newLength);
 
     return newLength;
 }
@@ -87,23 +96,22 @@ json getJSON(string url) {
 
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                    curl_easy_strerror(res));
+            throw fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                          curl_easy_strerror(res));
         }
         curl_easy_cleanup(curl);
-
     }
     return json::parse(response);
 }
 
-
 void channel_switcher(string interface) {
-    const vector<int> channels = {1,6,11,2,7,12,3,9,13,4,10,5,8};
+    const vector<int> channels = {1, 6, 11, 2, 7, 12, 3, 9, 13, 4, 10, 5, 8};
 
     // Switch channels for ever
-    while(true) {
+    while (true) {
         for (auto channel : channels) {
-            string command = "iw dev " + interface + " set channel " + to_string(channel);
+            string command =
+                "iw dev " + interface + " set channel " + to_string(channel);
             system(command.c_str());
             this_thread::sleep_for(chrono::milliseconds(100));
         }
@@ -140,6 +148,35 @@ bool is_monitor_mode(string interface) {
     string res(match[0]);
 
     return res == "monitor";
-
 }
 
+void initializeDatabase(sqlite3 *db) {
+    string dbDir = string(getenv("HOME")) + "/tfg_db/main.db";
+    char *errMsg = 0;
+
+    cout << dbDir << endl;
+
+    int err = sqlite3_open(dbDir.c_str(), &db);
+    if (err) {
+        cout << "Could not open DB!" << << endl;
+        exit(0);
+    }
+    string createTable = "CREATE TABLE WINDOWS(json TEXT NOT NULL);";
+
+    err = sqlite3_exec(db, createTable.c_str(), sqlite3Callback, 0, &errMsg);
+    if (err) {
+        cout << "Could not create base table!" << endl;
+        exit(0);
+    }
+    sqlite3_close(db);
+}
+
+static int sqlite3Callback(void *NotUsed, int argc, char **argv,
+                           char **azColName) {
+    int i;
+    for (i = 0; i < argc; i++) {
+        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+    printf("\n");
+    return 0;
+}

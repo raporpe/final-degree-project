@@ -13,9 +13,9 @@
 #include <thread>
 #include <vector>
 
-#include "CLI11.hpp"
+#include "lib/CLI11.hpp"
+#include "lib/json.hpp"
 #include "helpers.h"
-#include "json.hpp"
 
 using namespace Tins;
 using namespace std;
@@ -46,7 +46,14 @@ void PacketManager::uploadToBackend() {
 
     string url = HOSTNAME + "/v1/detected-macs";
 
-    if (!disableBackendUpload) postJSON(url, j);
+    if (!disableBackendUpload) {
+        try {
+            postJSON(url, j);
+        } catch (UnavailableBackendException &e) {
+            // Save the json in sqlite for sending it later
+            cout << "a" << endl;
+        }
+    } 
 }
 
 void PacketManager::syncPersonalMacs() {
@@ -172,6 +179,11 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->personalMacs = new unordered_set<mac>();
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
+
+    // Initialize SQLite database
+    initializeDatabase(this->db);
+    
+
 
     // Sync the macs with the backend
     this->syncPersonalMacs();
