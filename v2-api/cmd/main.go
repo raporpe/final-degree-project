@@ -258,6 +258,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 	// Return the digested macs
 	jsonReturn, err := json.Marshal(&struct {
 		NumberOfWindows   int                  `json:"number_of_windows"`
+		WindowsStartTimes []time.Time          `json:"windows_start_times"`
 		StartTime         time.Time            `json:"start_time"`
 		EndTime           time.Time            `json:"end_time"`
 		InconsistentData  bool                 `json:"inconsistent_data"`
@@ -265,6 +266,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 		Digest            map[string]MacDigest `json:"digest"`
 	}{
 		NumberOfWindows:   expectedWindowsBetween,
+		WindowsStartTimes: expectedStartTimes,
 		StartTime:         startTime,
 		EndTime:           timePlusWindow(startTime, expectedWindowsBetween, windowSizeSeconds),
 		Digest:            digestedMacs,
