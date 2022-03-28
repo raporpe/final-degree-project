@@ -392,7 +392,6 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 	detectedMacs, err := json.Marshal(state.DetectedMacs)
 	if err != nil {
 		log.Print("Error remarshalling the detected macs! Can this even happen?")
-		w.WriteHeader(500)
 		return
 	}
 
