@@ -52,7 +52,7 @@ void PacketManager::uploadToBackend() {
         } catch (UnavailableBackendException &e) {
             // Save the json in sqlite for sending it later
             cout << "Inserting json in DB!" << endl;
-            insertJSONInDatabase(this->db, j);
+            insertJSONInDatabase(&this->db, j);
         }
     }
 }
@@ -187,7 +187,7 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->showPackets = showPackets;
 
     // Initialize SQLite database
-    initializeDatabase(this->db);
+    initializeDatabase(&this->db);
 
     // Sync the macs with the backend
     this->syncPersonalMacs();

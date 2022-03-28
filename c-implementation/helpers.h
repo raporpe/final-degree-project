@@ -31,13 +31,13 @@ bool is_monitor_mode(string interface);
 
 size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s);
 
-void initializeDatabase(sqlite3 *db);
-
 static int sqlite3Callback(void *NotUsed, int argc, char **argv, char **azColName);
 
-void insertJSONInDatabase(sqlite3 *db, json j);
+void initializeDatabase(sqlite3 **db);
 
-void executeDB(sqlite3 *db, sqlite3_stmt *stmt);
+void insertJSONInDatabase(sqlite3 **db, json j);
+
+void executeDB(sqlite3 **db, sqlite3_stmt *stmt);
 
 struct UnavailableBackendException : public exception
 {
