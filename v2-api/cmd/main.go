@@ -366,39 +366,43 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
 	body, err := ioutil.ReadAll(r.Body)
-	CheckError(err)
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
 
 	var state UploadDetectedMacs
 
 	err = json.Unmarshal(body, &state)
-	CheckError(err)
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
 
-	go StoreDetectedMacs(state)
-}
-
-func StoreDetectedMacs(upload UploadDetectedMacs) {
-	log.Println("Storing detected macs from " + upload.DeviceID)
+	log.Println("Storing detected macs from " + state.DeviceID)
 
 	// Generate UUID
 	uuid, err := uuid.NewUUID()
 	if err != nil {
 		log.Print("Error generating UUID for inserting the detected macs! Skip this insertion.")
+		w.WriteHeader(500)
 		return
 	}
 
-	detectedMacs, err := json.Marshal(upload.DetectedMacs)
+	detectedMacs, err := json.Marshal(state.DetectedMacs)
 	if err != nil {
 		log.Print("Error remarshalling the detected macs! Can this even happen?")
+		w.WriteHeader(500)
 		return
 	}
 
 	// Store the list of detected macs in the DB
 	gormDB.Create(&DetectedMacDB{
 		ID:               uuid,
-		DeviceID:         upload.DeviceID,
-		SecondsPerWindow: upload.SecondsPerWindow,
-		StartTime:        time.Unix(int64(upload.StartTime), 0),
-		EndTime:          time.Unix(int64(upload.EndTime), 0),
+		DeviceID:         state.DeviceID,
+		SecondsPerWindow: state.SecondsPerWindow,
+		StartTime:        time.Unix(int64(state.StartTime), 0),
+		EndTime:          time.Unix(int64(state.EndTime), 0),
 		DetectedMacs:     string(detectedMacs),
 	})
 
