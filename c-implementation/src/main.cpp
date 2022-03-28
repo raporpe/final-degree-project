@@ -59,6 +59,32 @@ void PacketManager::uploadToBackend() {
             }
         }
     }
+
+    // Try to upload old jsons stored in the databse
+
+    SQLite::Statement query(*this->db, "SELECT * FROM WINDOWS");
+    while(query.executeStep()) {
+        int id = query.getColumn(0);
+        string storedJSON = query.getColumn(0);
+        // Try to send to backend 
+        bool correctPost = true;
+        try {
+            postJSON(url, storedJSON);
+        } catch (UnavailableBackendException &e) {
+            correctPost = false;
+            break;
+        }
+
+        if (correctPost) {
+            this->db->exec("DELETE FROM WINDOWS WHERE ID = '" + to_string(id) + "'");
+        }
+
+        cout << "Trying to restore json with id " << id << endl;
+
+    }
+
+
+
 }
 
 void PacketManager::syncPersonalMacs() {
@@ -191,7 +217,7 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->showPackets = showPackets;
 
     this->db = new SQLite::Database("/home/pi/tfg_db/main.db", SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
-    this->db->exec("CREATE TABLE IF NOT EXISTS WINDOWS (json TEXT NOT NULL);");
+    this->db->exec("CREATE TABLE IF NOT EXISTS WINDOWS (id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL);");
 
     // Sync the macs with the backend
     this->syncPersonalMacs();
