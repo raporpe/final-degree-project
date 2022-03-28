@@ -2,8 +2,8 @@
 #define HELPERS_H
 
 #include "main.h"
-#include "lib/json.hpp"
-#include "lib/sqlite3.h"
+#include "json.hpp"
+#include "sqlite3/sqlite3.h"
 #include <tins/tins.h>
 #include <regex>
 #include <thread>

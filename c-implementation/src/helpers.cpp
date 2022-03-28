@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #include "json.hpp"
-#include "lib/sqlite3.h"
+#include "sqlite3/sqlite3.h"
 #include "main.h"
 
 using namespace std::chrono;

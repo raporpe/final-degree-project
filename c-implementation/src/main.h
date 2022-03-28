@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "lib/sqlite3.h"
+#include "sqlite3/sqlite3.h"
 #include <tins/tins.h>
 
 #include <bitset>

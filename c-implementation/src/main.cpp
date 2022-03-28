@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "helpers.h"
-#include "lib/CLI11.hpp"
-#include "lib/json.hpp"
+#include "CLI11.hpp"
+#include "json.hpp"
 
 using namespace Tins;
 using namespace std;
