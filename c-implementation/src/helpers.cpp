@@ -8,7 +8,6 @@
 #include <stdexcept>
 
 #include "json.hpp"
-#include "sqlite3/sqlite3.h"
 #include "main.h"
 
 using namespace std::chrono;
@@ -147,71 +146,4 @@ bool is_monitor_mode(string interface) {
     string res(match[0]);
 
     return res == "monitor";
-}
-
-void initializeDatabase(sqlite3 **db) {
-    string dbDir = string("/home/pi/tfg_db/main.db");
-    char *errMsg = 0;
-
-    cout << dbDir << endl;
-
-    int err = sqlite3_open(dbDir.c_str(), db);
-    if (err) {
-        cout << "Could not open DB!" << sqlite3_errmsg(*db) << endl;
-        exit(0);
-    }
-    string createTable = "CREATE TABLE IF NOT EXISTS WINDOWS(json TEXT NOT NULL);";
-
-    err = sqlite3_exec(*db, createTable.c_str(), sqlite3Callback, 0, &errMsg);
-    if (err) {
-        cout << "Could not create base table: " << sqlite3_errmsg(*db) << endl;
-        exit(0);
-    }
-    sqlite3_close(*db);
-}
-
-// TODO: make this general for strings
-void executeDB(sqlite3 **db, sqlite3_stmt *stmt) {
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        cout << "There was an error performing sqlite3_step:" << sqlite3_errmsg(*db) << endl;
-        return;
-    }
-
-    if (sqlite3_finalize(stmt) != SQLITE_DONE) {
-        cout << "There was an error performing sqlite3_finalize:" << sqlite3_errmsg(*db) << endl;
-        return;
-    }
-
-}
-
-void insertJSONInDatabase(sqlite3 **db, json j) {
-    sqlite3_stmt *stmt;  // will point to prepared stamement object
-    string sql = "INSERT INTO WINDOWS (json) VALUES ( ?1 )";
-
-    sqlite3_prepare_v2(
-        *db,            // the handle to your (opened and ready) database
-        sql.c_str(),   // the sql statement, utf-8 encoded
-        -1,  // max length of sql statement
-        &stmt,  // this is an "out" parameter, the compiled statement goes here
-        0);
-    string js = j.dump();
-    if (sqlite3_bind_text(stmt,
-                          1,  // Index of wildcard
-                          js.c_str(),
-                          js.length(),  // length of text
-                          SQLITE_STATIC) != SQLITE_OK) {
-        cout << "There was an error formating sql statement:" << sqlite3_errmsg(*db) << endl;
-    }
-    executeDB(db, stmt);
-}
-
-static int sqlite3Callback(void *NotUsed, int argc, char **argv,
-                           char **azColName) {
-    int i;
-    for (i = 0; i < argc; i++) {
-        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-    }
-    printf("\n");
-    return 0;
 }

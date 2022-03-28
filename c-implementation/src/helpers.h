@@ -3,7 +3,6 @@
 
 #include "main.h"
 #include "json.hpp"
-#include "sqlite3/sqlite3.h"
 #include <tins/tins.h>
 #include <regex>
 #include <thread>
@@ -30,14 +29,6 @@ void set_monitor_mode(string interface);
 bool is_monitor_mode(string interface);
 
 size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s);
-
-static int sqlite3Callback(void *NotUsed, int argc, char **argv, char **azColName);
-
-void initializeDatabase(sqlite3 **db);
-
-void insertJSONInDatabase(sqlite3 **db, json j);
-
-void executeDB(sqlite3 **db, sqlite3_stmt *stmt);
 
 struct UnavailableBackendException : public exception
 {

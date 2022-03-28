@@ -52,7 +52,11 @@ void PacketManager::uploadToBackend() {
         } catch (UnavailableBackendException &e) {
             // Save the json in sqlite for sending it later
             cout << "Inserting json in DB!" << endl;
-            insertJSONInDatabase(&this->db, j);
+            SQLite::Statement query(*this->db, "INSERT INTO WINDOWS (json) VALUES ( ? );");
+            query.bind(1, j.dump());
+            while(query.executeStep()){
+                cout << "step" << endl;
+            }
         }
     }
 }
@@ -186,8 +190,8 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
 
-    // Initialize SQLite database
-    initializeDatabase(&this->db);
+    this->db = new SQLite::Database("/home/pi/tfg_db/main.db", SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
+    this->db->exec("CREATE TABLE IF NOT EXISTS WINDOWS (json TEXT NOT NULL);");
 
     // Sync the macs with the backend
     this->syncPersonalMacs();

@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "sqlite3/sqlite3.h"
+#include <SQLiteCpp/SQLiteCpp.h>
 #include <tins/tins.h>
 
 #include <bitset>
@@ -50,7 +50,7 @@ class PacketManager {
     mutex uploadingMutex;
     bool showPackets;
     string deviceID;
-    sqlite3 *db;
+    SQLite::Database *db;
 
     void uploadToBackend();
 
