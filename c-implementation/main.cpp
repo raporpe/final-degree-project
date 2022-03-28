@@ -13,9 +13,9 @@
 #include <thread>
 #include <vector>
 
+#include "helpers.h"
 #include "lib/CLI11.hpp"
 #include "lib/json.hpp"
-#include "helpers.h"
 
 using namespace Tins;
 using namespace std;
@@ -51,13 +51,13 @@ void PacketManager::uploadToBackend() {
             postJSON(url, j);
         } catch (UnavailableBackendException &e) {
             // Save the json in sqlite for sending it later
-            cout << "a" << endl;
+            cout << "Inserting json in DB!" << endl;
+            insertJSONInDatabase(this->db, j);
         }
-    } 
+    }
 }
 
 void PacketManager::syncPersonalMacs() {
-    
     // Send the current macs first
     json j;
     j["device_id"] = this->deviceID;
@@ -67,17 +67,20 @@ void PacketManager::syncPersonalMacs() {
     }
     j["personal_macs"] = p;
 
-
     string url = HOSTNAME + "/v1/personal-macs";
-    json response = postJSON(url, j);
+    json response = json::array();
+    try {
+        json response = postJSON(url, j);
+    } catch (UnavailableBackendException &e) {
+        cout << "Cannot connect with backend. Skipping personal macs sync!"
+             << endl;
+    }
 
-    // Fill the current macs with the received data 
+    // Fill the current macs with the received data
     for (auto mac : response) {
         personalMacs->insert(mac.get<string>());
     }
-
 }
-
 
 void PacketManager::uploader() {
     while (true) {
@@ -89,7 +92,8 @@ void PacketManager::uploader() {
             cout << "-----------------------------------" << endl;
             cout << "Personal devices index size: " << personalMacs->size()
                  << endl;
-            cout << "Detected macs for current window: " << detectedMacs->size() << endl;
+            cout << "Detected macs for current window: " << detectedMacs->size()
+                 << endl;
             cout << "-----------------------------------" << endl;
 
             // Upload to backend
@@ -106,12 +110,14 @@ void PacketManager::uploader() {
 
             this->uploadingMutex.unlock();
         }
-        int sleepFor = currentWindowStartTime + secondsPerWindow - getCurrentTime();
+        int sleepFor =
+            currentWindowStartTime + secondsPerWindow - getCurrentTime();
         this_thread::sleep_for(chrono::seconds(sleepFor));
     }
 }
 
-void PacketManager::countDevice(mac macAddress, double signalStrength, int type) {
+void PacketManager::countDevice(mac macAddress, double signalStrength,
+                                int type) {
     // Do not allow invalid macs (multicast and broadcast)
     if (!isMacValid(macAddress)) return;
 
@@ -182,8 +188,6 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
 
     // Initialize SQLite database
     initializeDatabase(this->db);
-    
-
 
     // Sync the macs with the backend
     this->syncPersonalMacs();
@@ -203,7 +207,8 @@ void PacketManager::registerFrame(Packet frame) {
     }
 
     double signalStrength = frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
-    signalStrength = 1000000000.0 * pow(10, signalStrength/10.0); // Convert to pW (10^-12)
+    signalStrength = 1000000000.0 *
+                     pow(10, signalStrength / 10.0);  // Convert to pW (10^-12)
 
     if (auto dot11Frame = frame.pdu()->find_pdu<Dot11>()) {
         switch (dot11Frame->type()) {
@@ -307,9 +312,16 @@ int main(int argc, char *argv[]) {
     }
 
     // Get config from backend
-    json backendConfig = getJSON(HOSTNAME + "/v1/config");
-    int secondsPerWindow = backendConfig["seconds_per_window"];
-
+    int secondsPerWindow;
+    try {
+        json backendConfig = getJSON(HOSTNAME + "/v1/config");
+        secondsPerWindow = backendConfig["seconds_per_window"];
+    } catch (UnavailableBackendException &e) {
+        cout << "Could not connect with backend to get the configuration!"
+             << endl
+             << "Setting seconds_per_window to 60!" << endl;
+        secondsPerWindow = 60;
+    }
 
     // Print important information
     cout << "-----------------------" << endl;
@@ -348,8 +360,8 @@ int main(int argc, char *argv[]) {
 
     Sniffer sniffer(interface, config);
 
-    PacketManager *packetManager =
-        new PacketManager(disableUpload, deviceID, showPackets, secondsPerWindow);
+    PacketManager *packetManager = new PacketManager(
+        disableUpload, deviceID, showPackets, secondsPerWindow);
 
     while (true) {
         Packet pkt = sniffer.next_packet();

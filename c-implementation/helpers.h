@@ -35,6 +35,10 @@ void initializeDatabase(sqlite3 *db);
 
 static int sqlite3Callback(void *NotUsed, int argc, char **argv, char **azColName);
 
+void insertJSONInDatabase(sqlite3 *db, json j);
+
+void executeDB(sqlite3 *db, sqlite3_stmt *stmt);
+
 struct UnavailableBackendException : public exception
 {
 	const char * what () const throw ()
