@@ -13,8 +13,8 @@
 #include <thread>
 #include <vector>
 
-#include "CLI11.hpp"
 #include "helpers.h"
+#include "CLI11.hpp"
 #include "json.hpp"
 
 using namespace Tins;
@@ -46,11 +46,22 @@ void PacketManager::uploadToBackend() {
 
     string url = HOSTNAME + "/v1/detected-macs";
 
-    if (!disableBackendUpload) postJSON(url, j);
+    if (!disableBackendUpload) {
+        try {
+            postJSON(url, j);
+        } catch (UnavailableBackendException &e) {
+            // Save the json in sqlite for sending it later
+            cout << "Inserting json in DB!" << endl;
+            SQLite::Statement query(*this->db, "INSERT INTO WINDOWS (json) VALUES ( ? );");
+            query.bind(1, j.dump());
+            while(query.executeStep()){
+                cout << "step" << endl;
+            }
+        }
+    }
 }
 
 void PacketManager::syncPersonalMacs() {
-    
     // Send the current macs first
     json j;
     j["device_id"] = this->deviceID;
@@ -60,17 +71,20 @@ void PacketManager::syncPersonalMacs() {
     }
     j["personal_macs"] = p;
 
-
     string url = HOSTNAME + "/v1/personal-macs";
-    json response = postJSON(url, j);
+    json response = json::array();
+    try {
+        json response = postJSON(url, j);
+    } catch (UnavailableBackendException &e) {
+        cout << "Cannot connect with backend. Skipping personal macs sync!"
+             << endl;
+    }
 
-    // Fill the current macs with the received data 
+    // Fill the current macs with the received data
     for (auto mac : response) {
         personalMacs->insert(mac.get<string>());
     }
-
 }
-
 
 void PacketManager::uploader() {
     while (true) {
@@ -82,7 +96,8 @@ void PacketManager::uploader() {
             cout << "-----------------------------------" << endl;
             cout << "Personal devices index size: " << personalMacs->size()
                  << endl;
-            cout << "Detected macs for current window: " << detectedMacs->size() << endl;
+            cout << "Detected macs for current window: " << detectedMacs->size()
+                 << endl;
             cout << "-----------------------------------" << endl;
 
             // Upload to backend
@@ -99,12 +114,14 @@ void PacketManager::uploader() {
 
             this->uploadingMutex.unlock();
         }
-        int sleepFor = currentWindowStartTime + secondsPerWindow - getCurrentTime();
+        int sleepFor =
+            currentWindowStartTime + secondsPerWindow - getCurrentTime();
         this_thread::sleep_for(chrono::seconds(sleepFor));
     }
 }
 
-void PacketManager::countDevice(mac macAddress, double signalStrength, int type) {
+void PacketManager::countDevice(mac macAddress, double signalStrength,
+                                int type) {
     // Do not allow invalid macs (multicast and broadcast)
     if (!isMacValid(macAddress)) return;
 
@@ -173,6 +190,9 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
 
+    this->db = new SQLite::Database("/home/pi/tfg_db/main.db", SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
+    this->db->exec("CREATE TABLE IF NOT EXISTS WINDOWS (json TEXT NOT NULL);");
+
     // Sync the macs with the backend
     this->syncPersonalMacs();
 
@@ -191,7 +211,8 @@ void PacketManager::registerFrame(Packet frame) {
     }
 
     double signalStrength = frame.pdu()->find_pdu<RadioTap>()->dbm_signal();
-    signalStrength = 1000000000.0 * pow(10, signalStrength/10.0); // Convert to pW (10^-12)
+    signalStrength = 1000000000.0 *
+                     pow(10, signalStrength / 10.0);  // Convert to pW (10^-12)
 
     if (auto dot11Frame = frame.pdu()->find_pdu<Dot11>()) {
         switch (dot11Frame->type()) {
@@ -295,9 +316,16 @@ int main(int argc, char *argv[]) {
     }
 
     // Get config from backend
-    json backendConfig = getJSON(HOSTNAME + "/v1/config");
-    int secondsPerWindow = backendConfig["seconds_per_window"];
-
+    int secondsPerWindow;
+    try {
+        json backendConfig = getJSON(HOSTNAME + "/v1/config");
+        secondsPerWindow = backendConfig["seconds_per_window"];
+    } catch (UnavailableBackendException &e) {
+        cout << "Could not connect with backend to get the configuration!"
+             << endl
+             << "Setting seconds_per_window to 60!" << endl;
+        secondsPerWindow = 60;
+    }
 
     // Print important information
     cout << "-----------------------" << endl;
@@ -336,8 +364,8 @@ int main(int argc, char *argv[]) {
 
     Sniffer sniffer(interface, config);
 
-    PacketManager *packetManager =
-        new PacketManager(disableUpload, deviceID, showPackets, secondsPerWindow);
+    PacketManager *packetManager = new PacketManager(
+        disableUpload, deviceID, showPackets, secondsPerWindow);
 
     while (true) {
         Packet pkt = sniffer.next_packet();

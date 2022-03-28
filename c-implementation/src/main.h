@@ -1,6 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include <SQLiteCpp/SQLiteCpp.h>
 #include <tins/tins.h>
 
 #include <bitset>
@@ -45,10 +46,11 @@ class PacketManager {
     unordered_set<mac>* personalMacs;
     bool disableBackendUpload = false;
     int currentWindowStartTime;
+    int secondsPerWindow;
     mutex uploadingMutex;
     bool showPackets;
     string deviceID;
-    int secondsPerWindow;
+    SQLite::Database *db;
 
     void uploadToBackend();
 

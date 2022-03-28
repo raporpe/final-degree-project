@@ -2,12 +2,13 @@
 
 #include <curl/curl.h>
 #include <tins/tins.h>
-#include <json.hpp>
 
 #include <chrono>
-
-#include "main.h"
 #include <iostream>
+#include <stdexcept>
+
+#include "json.hpp"
+#include "main.h"
 
 using namespace std::chrono;
 using namespace std;
@@ -35,7 +36,7 @@ mac getStationMAC(Tins::Dot11Data *frame) {
 
 bool isMacValid(mac address) {
     bool isNull = address == mac(nullptr);
-    return address.is_unicast() && !isNull; 
+    return address.is_unicast() && !isNull;
 }
 
 bool isMacFake(mac address) { return (address[0] & 0x02) == 0x02; }
@@ -55,11 +56,14 @@ json postJSON(string url, json j) {
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
         CURLcode res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
             fprintf(stderr, "curl_easy_perform() failed: %s\n",
                     curl_easy_strerror(res));
+            throw UnavailableBackendException();
         }
 
         curl_easy_cleanup(curl);
@@ -68,10 +72,10 @@ json postJSON(string url, json j) {
     return json::object();
 }
 
-size_t curlWriteCallback(void *contents, size_t size, size_t nmemb, std::string *s)
-{
-    size_t newLength = size*nmemb;
-    s->append((char*)contents, newLength);
+size_t curlWriteCallback(void *contents, size_t size, size_t nmemb,
+                         std::string *s) {
+    size_t newLength = size * nmemb;
+    s->append((char *)contents, newLength);
 
     return newLength;
 }
@@ -84,26 +88,28 @@ json getJSON(string url) {
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
             fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                    curl_easy_strerror(res));
+                          curl_easy_strerror(res));
+            throw UnavailableBackendException();
         }
         curl_easy_cleanup(curl);
-
     }
-    return json::parse(response);
+    if (response != "") return json::parse(response);
+    return json::object();
 }
 
-
 void channel_switcher(string interface) {
-    const vector<int> channels = {1,6,11,2,7,12,3,9,13,4,10,5,8};
+    const vector<int> channels = {1, 6, 11, 2, 7, 12, 3, 9, 13, 4, 10, 5, 8};
 
     // Switch channels for ever
-    while(true) {
+    while (true) {
         for (auto channel : channels) {
-            string command = "iw dev " + interface + " set channel " + to_string(channel);
+            string command =
+                "iw dev " + interface + " set channel " + to_string(channel);
             system(command.c_str());
             this_thread::sleep_for(chrono::milliseconds(100));
         }
@@ -140,6 +146,4 @@ bool is_monitor_mode(string interface) {
     string res(match[0]);
 
     return res == "monitor";
-
 }
-

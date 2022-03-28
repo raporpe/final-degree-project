@@ -1,3 +1,4 @@
 main
-newData
 *.bin
+build
+!lib

@@ -27,6 +27,7 @@
         "streambuf": "cpp",
         "regex": "cpp",
         "atomic": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "stdexcept": "cpp"
     }
 }
