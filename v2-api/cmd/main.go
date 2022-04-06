@@ -375,6 +375,7 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &state)
 	if err != nil {
+		log.Println("Error when unmarshalling received body")
 		w.WriteHeader(500)
 		return
 	}
