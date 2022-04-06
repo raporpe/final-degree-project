@@ -46,6 +46,7 @@ func main() {
 	r.HandleFunc("/v1/detected-macs", DetectedMacsGetHandler).Methods("GET")
 	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
 	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
+	r.HandleFunc("/v1/clustered-macs", DigestedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -88,6 +89,7 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	startTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
 	if err != nil {
 		log.Println("Invalid start_time!: " + err.Error())
+		w.WriteHeader(500)
 		w.Write([]byte("Invalid start_time"))
 		return
 	}
@@ -96,6 +98,7 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	endTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
 	if err != nil {
 		log.Println("Invalid end_time!")
+		w.WriteHeader(500)
 		w.Write([]byte("Invalid end_time"))
 		return
 	}
@@ -103,16 +106,27 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the query param device_id
 	deviceID := r.URL.Query().Get("device_id")
 	if deviceID == "" {
+		log.Println("Invalid device_id!")
+		w.WriteHeader(500)
 		w.Write([]byte("device_id required"))
 		return
 	}
 
-	result := GetDigestedMacs(deviceID, startTime, endTime)
-	w.Write([]byte(result))
+	digestedMacs := GetDigestedMacs(deviceID, startTime, endTime)
+
+	jsonResponse, err := json.Marshal(&digestedMacs)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Println("There was an error trying to marshall the final digested macs struct!")
+		return
+	}
+
+	w.Write([]byte(jsonResponse))
 
 }
 
-func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) string {
+
+func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) ReturnDigestedMacs {
 
 	// Get data from the database
 	var windowsInDB []DetectedMacDB
@@ -256,15 +270,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 	}
 
 	// Return the digested macs
-	jsonReturn, err := json.Marshal(&struct {
-		NumberOfWindows   int                  `json:"number_of_windows"`
-		WindowsStartTimes []time.Time          `json:"windows_start_times"`
-		StartTime         time.Time            `json:"start_time"`
-		EndTime           time.Time            `json:"end_time"`
-		InconsistentData  bool                 `json:"inconsistent_data"`
-		InconsistentTimes []time.Time          `json:"inconsistent_times"`
-		Digest            map[string]MacDigest `json:"digest"`
-	}{
+	return ReturnDigestedMacs{
 		NumberOfWindows:   expectedWindowsBetween,
 		WindowsStartTimes: expectedStartTimes,
 		StartTime:         startTime,
@@ -272,13 +278,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) st
 		Digest:            digestedMacs,
 		InconsistentData:  inconsistentData,
 		InconsistentTimes: inconsistentTimes,
-	})
-	if err != nil {
-		log.Println("There was an error trying to marshall the final digested macs struct!")
-		return ""
 	}
-
-	return string(jsonReturn)
 
 }
 
@@ -464,6 +464,17 @@ type DetectedMacDB struct {
 func (DetectedMacDB) TableName() string {
 	return "detected_macs"
 }
+
+type ReturnDigestedMacs struct {
+	NumberOfWindows   int                  `json:"number_of_windows"`
+	WindowsStartTimes []time.Time          `json:"windows_start_times"`
+	StartTime         time.Time            `json:"start_time"`
+	EndTime           time.Time            `json:"end_time"`
+	InconsistentData  bool                 `json:"inconsistent_data"`
+	InconsistentTimes []time.Time          `json:"inconsistent_times"`
+	Digest            map[string]MacDigest `json:"digest"`
+}
+
 
 type ReturnDetectedMacs struct {
 	DeviceID         string                 `json:"device_id"`
