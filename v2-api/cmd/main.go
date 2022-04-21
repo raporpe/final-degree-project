@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/klauspost/oui"
+	"github.com/raporpe/dbscan"
 )
 
 // The mac vendor IEEE database
@@ -46,7 +48,7 @@ func main() {
 	r.HandleFunc("/v1/detected-macs", DetectedMacsGetHandler).Methods("GET")
 	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
 	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
-	r.HandleFunc("/v1/clustered-macs", DigestedMacsHandler).Methods("GET")
+	r.HandleFunc("/v1/clustered-macs", GetClusteredMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -71,12 +73,15 @@ func main() {
 
 func ConfigGetHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Serving configuration")
+
 	configResponse := ConfigResponse{
 		SecondsPerWindow: 60,
 	}
+
 	byteJson, err := json.Marshal(configResponse)
 	CheckError(err)
 	w.Write(byteJson)
+
 }
 
 func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +130,98 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Serving mac clustering")
+
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+
+	// Read the query param device_id
+	roomID := r.URL.Query().Get("room_id")
+	if roomID == "" {
+		log.Println("Invalid room_id!")
+		w.WriteHeader(500)
+		w.Write([]byte("Ivalid room_id"))
+		return
+	}
+
+	clusteredMacs, err := GetClusteredMacs(roomID)
+	if err != nil {
+		log.Println("Error calculating cluster: " + err.Error())
+		w.WriteHeader(500)
+		w.Write([]byte("An error ocurred"))
+		return
+	}
+
+	jsonResponse, err := json.Marshal(&clusteredMacs)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Println("There was an error trying to marshall the final digested macs struct!")
+		return
+	}
+
+	w.Write([]byte(jsonResponse))
+
+}
+
+func GetClusteredMacs(roomID string) (map[string][][]string, error) {
+
+	// Get the devices that are in the room
+	var CaptureDevicesInRoom []CaptureDevicesDB
+	gormDB.Where("room_id = ?", roomID).Find(&CaptureDevicesInRoom)
+
+	// Determine the start time and end time
+	// The end time should be the current time with seconds truncated minus one
+	now := time.Now()
+	endTime := now.Truncate(60 * time.Second).Add(1 * time.Minute)
+
+	// The start time should be the end time minus the windows context
+	startTime := endTime.Add(-15 * time.Minute)
+
+	// Create the return variable, a map from devices to clusters
+	toReturn := make(map[string][][]string)
+
+	// Iterate over every device in the room
+	for _, device := range CaptureDevicesInRoom {
+		deviceID := device.DeviceID
+		digestedMacs := GetDigestedMacs(deviceID, startTime, endTime)
+
+		var newDigest []MacDigest
+		for _, v := range digestedMacs.Digest {
+			newDigest = append(newDigest, v)
+		}
+
+		//fmt.Printf("newDigest: %v\n", newDigest)
+
+		var points []dbscan.Point
+		for _, v := range newDigest {
+			points = append(points, v)
+		}
+
+		DBScanResult := dbscan.Cluster(2, 1.0, points)
+
+		//fmt.Printf("DBScanResult: %v\n", DBScanResult)
+
+		var clusters [][]string
+
+		for _, c := range DBScanResult {
+			var cluster []string
+			for _, p := range c {
+				cluster = append(cluster, p.(MacDigest).Mac)
+				//fmt.Printf("cluster: %v\n", cluster)
+			}
+			clusters = append(clusters, cluster)
+		}
+
+		toReturn[deviceID] = clusters
+
+		//fmt.Printf("clusters: %v\n", clusters)
+
+	}
+
+	return toReturn, nil
+
+}
 
 func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) ReturnDigestedMacs {
 
@@ -252,6 +349,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 			} else {
 				// If the mac does no exist, create struct
 				m := MacDigest{
+					Mac:               mac,
 					AvgSignalStrength: data.AverageSignalStrength,
 					PresenceRecord:    make([]bool, expectedWindowsBetween),
 					TypeCount:         data.TypeCount,
@@ -475,12 +573,14 @@ type ReturnDigestedMacs struct {
 	Digest            map[string]MacDigest `json:"digest"`
 }
 
-
 type ReturnDetectedMacs struct {
 	DeviceID         string                 `json:"device_id"`
 	DetectedMacs     map[string]MacMetadata `json:"detected_macs"`
 	SecondsPerWindow int                    `json:"seconds_per_window"`
 	EndTime          time.Time              `json:"end_time"`
+}
+
+type ReturnClusteredMacs struct {
 }
 
 type MacMetadata struct {
@@ -507,10 +607,39 @@ func (PersonalMacsDB) TableName() string {
 	return "personal_macs"
 }
 
+type CaptureDevicesDB struct {
+	DeviceID string `json:"device_id"`
+	RoomID   string `json:"room_id"`
+}
+
+func (CaptureDevicesDB) TableName() string {
+	return "capture_devices"
+}
+
 type MacDigest struct {
+	Mac               string  `json:"mac"`
 	AvgSignalStrength float64 `json:"average_signal_strenght"`
 	Manufacturer      *string `json:"manufacturer"` // Manufacturer is nullable
 	OuiID             string  `json:"oui_id"`
 	TypeCount         [3]int  `json:"type_count"`
 	PresenceRecord    []bool  `json:"presence_record"`
+}
+
+func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
+	signalDifference := 1 / (math.Abs(m.AvgSignalStrength - other.(MacDigest).AvgSignalStrength))
+
+	sameManufacturer := 0.0
+	sameOUI := 0.0
+	if m.Manufacturer != nil && m.Manufacturer == other.(MacDigest).Manufacturer {
+		sameManufacturer = 1.0
+		if m.OuiID == other.(MacDigest).OuiID {
+			sameOUI = 1.0
+		}
+	}
+
+	return signalDifference + sameManufacturer + sameOUI
+}
+
+func (m MacDigest) Name() string {
+	return m.Mac
 }

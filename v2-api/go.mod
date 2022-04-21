@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/bits-and-blooms/bitset v1.2.2
 	github.com/gorilla/mux v1.8.0
+	github.com/raporpe/dbscan v0.0.2
 )
 
 require (
