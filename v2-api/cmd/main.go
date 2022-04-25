@@ -49,6 +49,7 @@ func main() {
 	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
 	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/clustered-macs", GetClusteredMacsHandler).Methods("GET")
+	r.HandleFunc("/v1/rooms", GetRoomsHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -133,12 +134,71 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse, err := json.Marshal(&digestedMacs)
 	if err != nil {
 		w.WriteHeader(500)
-		log.Println("There was an error trying to marshall the final digested macs struct!")
+		log.Println("There was an error trying to marshall the final struct!")
 		return
 	}
 
 	w.Write([]byte(jsonResponse))
 
+}
+
+func GetRoomsHandler(w http.ResponseWriter, r *http.Request) {
+	rooms := GetRooms()
+	jsonResponse, err := json.Marshal(&rooms)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Println("There was an error trying to marshall the final struct!")
+		return
+	}
+
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Write([]byte(jsonResponse))
+}
+
+func GetRooms() ReturnRooms {
+	// Get all the current rooms
+	var allRooms []CaptureDevicesDB
+	gormDB.Find(&allRooms)
+
+	// Results: room (string) -> ocupation (int)
+	rooms := make(map[string]int)
+
+	// Bool for storing the rooms that are inconsistent
+	inconsistentRooms := []string{}
+
+	for _, v := range allRooms {
+		// Pass empty time to avoid overriding it
+		clusteredMacs, err := GetClusteredMacs(v.RoomID, time.Time{})
+		if err != nil {
+			fmt.Printf("There was an error getting room %v: %v", v.RoomID, err.Error())
+		}
+
+		// Check if the room has any inconsistent data
+		if clusteredMacs.InconsistentData {
+			inconsistentRooms = append(inconsistentRooms, v.RoomID)
+		}
+
+		// Iterate every device in the room and merge the clusters of each device
+		var clusters [][]string
+		for _, clustersOnDevice := range clusteredMacs.Results {
+			clusters = append(clusters, clustersOnDevice...)
+			// Two clusters are considered equal when they share a % of equal macs
+			//for _, cluster := range clustersOnDevice {
+			//
+			//}
+		}
+
+		// Store how many clusters are in the room
+		rooms[v.RoomID] = len(clusters)
+
+	}
+
+	return ReturnRooms{
+		InconsistentRooms: inconsistentRooms,
+		ContextSize:       15,
+		Rooms:             rooms,
+	}
 }
 
 func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
@@ -648,6 +708,12 @@ type ReturnClusteredMacs struct {
 	Results          map[string][][]string `json:"results"`
 }
 
+type ReturnRooms struct {
+	InconsistentRooms []string       `json:"inconsistent_rooms"`
+	ContextSize       int            `json:"context_size"`
+	Rooms             map[string]int `json:"rooms"`
+}
+
 type MacMetadata struct {
 	AverageSignalStrength float64 `json:"average_signal_strength"`
 	DetectionCount        int     `json:"detection_count"`
@@ -699,6 +765,7 @@ func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
 		signalDistance = signalDifference / 1500.0
 	}
 
+	// TODO: check if correctly done
 	typeDistance := 0.0
 	for idx, v := range m.TypeCount {
 		v1 := v
@@ -710,8 +777,6 @@ func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
 		}
 	}
 
-	fmt.Printf("typeDistance: %v\n", typeDistance)
-
 	presenceDistance := 0.0
 	for idx, v := range m.PresenceRecord {
 		if v != other.(MacDigest).PresenceRecord[idx] {
@@ -719,10 +784,8 @@ func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
 		}
 	}
 
-	fmt.Printf("presenceDistance: %v\n", presenceDistance)
-
 	distance := (2*signalDistance + typeDistance + presenceDistance) / 4.0
-	fmt.Printf("distance: %v\n", distance)
+	//fmt.Printf("distance: %v\n", distance)
 
 	return distance
 }
