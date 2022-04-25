@@ -156,7 +156,21 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusteredMacs, err := GetClusteredMacs(roomID)
+	// Override end_time (optional)
+	endTime := r.URL.Query().Get("end_time")
+	var parsedEndTime time.Time
+	if endTime != "" {
+		var err error
+		parsedEndTime, err = time.Parse(time.RFC3339, endTime)
+		if err != nil {
+			log.Println("Invalid end_time!")
+			w.WriteHeader(500)
+			w.Write([]byte("The specified end_time format is not valid"))
+			return
+		}
+	}
+
+	clusteredMacs, err := GetClusteredMacs(roomID, parsedEndTime)
 	if err != nil {
 		log.Println("Error calculating cluster: " + err.Error())
 		w.WriteHeader(500)
@@ -175,22 +189,35 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetClusteredMacs(roomID string) (map[string][][]string, error) {
+func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, error) {
 
 	// Get the devices that are in the room
 	var CaptureDevicesInRoom []CaptureDevicesDB
 	gormDB.Where("room_id = ?", roomID).Find(&CaptureDevicesInRoom)
 
 	// Get the start time and end time
-	startTime, endTime := GetStartEndTime()
+	var startTime time.Time
+	// If the end time is not specified
+	if endTime.IsZero() {
+		startTime, endTime = GetStartEndTime()
+	} else {
+		// When the endTime is set, we calculate the start time
+		startTime = endTime.Add(-15 * time.Minute)
+	}
 
 	// Create the return variable, a map from devices to clusters
-	toReturn := make(map[string][][]string)
+	results := make(map[string][][]string)
+
+	// To note if there was any inconsistency and return it at the end
+	inconsistentData := false
 
 	// Iterate over every device in the room
 	for _, device := range CaptureDevicesInRoom {
 		deviceID := device.DeviceID
 		digestedMacs := GetDigestedMacs(deviceID, startTime, endTime)
+
+		// Check for inconsistent data
+		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
 		//var activeMacs []string
@@ -242,8 +269,15 @@ func GetClusteredMacs(roomID string) (map[string][][]string, error) {
 
 		fmt.Printf("ending macs: %v\n", endingMacs)
 
-		toReturn[deviceID] = clusters
+		results[deviceID] = clusters
 
+	}
+
+	toReturn := ReturnClusteredMacs{
+		StartTime:        startTime,
+		EndTime:          endTime,
+		InconsistentData: inconsistentData,
+		Results:          results,
 	}
 
 	return toReturn, nil
@@ -608,6 +642,10 @@ type ReturnDetectedMacs struct {
 }
 
 type ReturnClusteredMacs struct {
+	StartTime        time.Time             `json:"start_time"`
+	EndTime          time.Time             `json:"end_time"`
+	InconsistentData bool                  `json:"inconsistent_data"`
+	Results          map[string][][]string `json:"results"`
 }
 
 type MacMetadata struct {
