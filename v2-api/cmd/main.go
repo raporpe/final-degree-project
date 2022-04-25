@@ -90,22 +90,33 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	// Read the query param start_time
-	startTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
-	if err != nil {
-		log.Println("Invalid start_time!: " + err.Error())
-		w.WriteHeader(500)
-		w.Write([]byte("Invalid start_time"))
-		return
-	}
+	// Get the start time and end time
+	startTime, endTime := GetStartEndTime()
 
-	// Read the query param end_time
-	endTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
-	if err != nil {
-		log.Println("Invalid end_time!")
-		w.WriteHeader(500)
-		w.Write([]byte("Invalid end_time"))
-		return
+	// If the start time and the end time are set, then override defaults
+	startTimeSet := r.URL.Query().Get("start_time") != ""
+	endTimeSet := r.URL.Query().Get("end_time") != ""
+
+	if endTimeSet || startTimeSet {
+		var err error
+		// Read the query param start_time
+		startTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
+		if err != nil {
+			log.Println("Invalid start_time!: " + err.Error())
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid start_time"))
+			return
+		}
+
+		// Read the query param end_time
+		endTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
+		if err != nil {
+			log.Println("Invalid end_time!")
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid end_time"))
+			return
+		}
+
 	}
 
 	// Read the query param device_id
@@ -170,13 +181,8 @@ func GetClusteredMacs(roomID string) (map[string][][]string, error) {
 	var CaptureDevicesInRoom []CaptureDevicesDB
 	gormDB.Where("room_id = ?", roomID).Find(&CaptureDevicesInRoom)
 
-	// Determine the start time and end time
-	// The end time should be the current time with seconds truncated minus one
-	now := time.Now()
-	endTime := now.Truncate(60 * time.Second).Add(1 * time.Minute)
-
-	// The start time should be the end time minus the windows context
-	startTime := endTime.Add(-15 * time.Minute)
+	// Get the start time and end time
+	startTime, endTime := GetStartEndTime()
 
 	// Create the return variable, a map from devices to clusters
 	toReturn := make(map[string][][]string)
@@ -186,36 +192,57 @@ func GetClusteredMacs(roomID string) (map[string][][]string, error) {
 		deviceID := device.DeviceID
 		digestedMacs := GetDigestedMacs(deviceID, startTime, endTime)
 
-		var newDigest []MacDigest
+		// Exclude mac addresses that are not active
+		//var activeMacs []string
+
+		// Separate those macs that are real
+		var realMacs []string
 		for _, v := range digestedMacs.Digest {
-			newDigest = append(newDigest, v)
+			if v.Manufacturer != nil {
+				realMacs = append(realMacs, v.Mac)
+			}
 		}
 
-		//fmt.Printf("newDigest: %v\n", newDigest)
-
+		// Convert from MacDigest type into dbscan.Point type
+		// Only fake macs will go trough this process
 		var points []dbscan.Point
-		for _, v := range newDigest {
-			points = append(points, v)
+		for _, v := range digestedMacs.Digest {
+			if v.Manufacturer == nil {
+				points = append(points, v)
+			}
 		}
 
-		DBScanResult := dbscan.Cluster(2, 1.0, points)
+		DBScanResult := dbscan.Cluster(0, 0.2, points)
 
-		//fmt.Printf("DBScanResult: %v\n", DBScanResult)
-
+		// Convert from points into strings (macs)
 		var clusters [][]string
 
 		for _, c := range DBScanResult {
 			var cluster []string
 			for _, p := range c {
 				cluster = append(cluster, p.(MacDigest).Mac)
-				//fmt.Printf("cluster: %v\n", cluster)
 			}
 			clusters = append(clusters, cluster)
 		}
 
-		toReturn[deviceID] = clusters
+		fmt.Printf("DBScanResult: %v\n", len(DBScanResult))
 
-		//fmt.Printf("clusters: %v\n", clusters)
+		// Insert the real macs as unique clusters
+		//for _, r := range realMacs {
+		//	clusters = append(clusters, []string{r})
+		//}
+
+		fmt.Printf("starting macs: %v\n", len(digestedMacs.Digest))
+		endingMacs := 0
+		for _, i := range clusters {
+			for range i {
+				endingMacs += 1
+			}
+		}
+
+		fmt.Printf("ending macs: %v\n", endingMacs)
+
+		toReturn[deviceID] = clusters
 
 	}
 
@@ -626,20 +653,61 @@ type MacDigest struct {
 }
 
 func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
-	signalDifference := 1 / (math.Abs(m.AvgSignalStrength - other.(MacDigest).AvgSignalStrength))
+	signalDifference := math.Abs(m.AvgSignalStrength - other.(MacDigest).AvgSignalStrength)
+	signalDistance := 0.0
+	if signalDifference > 1500 {
+		signalDistance = 1
+	} else {
+		signalDistance = signalDifference / 1500.0
+	}
 
-	sameManufacturer := 0.0
-	sameOUI := 0.0
-	if m.Manufacturer != nil && m.Manufacturer == other.(MacDigest).Manufacturer {
-		sameManufacturer = 1.0
-		if m.OuiID == other.(MacDigest).OuiID {
-			sameOUI = 1.0
+	typeDistance := 0.0
+	for idx, v := range m.TypeCount {
+		v1 := v
+		v2 := other.(MacDigest).TypeCount[idx]
+		diff := float64(v1 - v2)
+		total := float64(v1 + v2)
+		if diff != 0 {
+			typeDistance = typeDistance + (math.Abs(diff)/total)/3.0
 		}
 	}
 
-	return signalDifference + sameManufacturer + sameOUI
+	fmt.Printf("typeDistance: %v\n", typeDistance)
+
+	presenceDistance := 0.0
+	for idx, v := range m.PresenceRecord {
+		if v != other.(MacDigest).PresenceRecord[idx] {
+			presenceDistance = presenceDistance + 1.0/float64(len(m.PresenceRecord))
+		}
+	}
+
+	fmt.Printf("presenceDistance: %v\n", presenceDistance)
+
+	distance := (2*signalDistance + typeDistance + presenceDistance) / 4.0
+	fmt.Printf("distance: %v\n", distance)
+
+	return distance
 }
 
 func (m MacDigest) Name() string {
 	return m.Mac
+}
+
+func GetStartEndTime() (time.Time, time.Time) {
+
+	// Determine the start time and end time
+	// The end time should be the current time with seconds truncated minus one
+	now := time.Now()
+	endTime := now.Truncate(60 * time.Second).Add(0 * time.Minute)
+
+	// The start time should be the end time minus the windows context
+	startTime := endTime.Add(-15 * time.Minute)
+
+	cet, err := time.LoadLocation("Europe/Madrid")
+	if err != nil {
+		fmt.Println("Error getting start and end time: ", err.Error())
+	}
+
+	return startTime.In(cet), endTime.In(cet)
+
 }
