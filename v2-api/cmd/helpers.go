@@ -17,3 +17,18 @@ func howManyTrue(slice []bool) int {
 func timePlusWindow(startTime time.Time, windows int, windowSize int) time.Time {
 	return startTime.Add(time.Second * time.Duration(windowSize*windows))
 }
+
+func DeduplicateSlice(slice []string) []string {
+	var ret []string
+
+	m := make(map[string]string)
+	for _, v := range slice {
+		m[v] = ""
+	}
+
+	for k := range m {
+		ret = append(ret, k)
+	}
+
+	return ret
+}

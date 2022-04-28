@@ -471,6 +471,9 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 				m.TypeCount[1] += data.TypeCount[1]
 				m.TypeCount[2] += data.TypeCount[2]
 				m.SSIDProbes = append(m.SSIDProbes, data.SSIDProbes...)
+				m.HTCapabilities = append(m.HTCapabilities, data.HTCapabilities...)
+				m.SSIDProbes = DeduplicateSlice(m.SSIDProbes)
+				m.HTCapabilities = DeduplicateSlice(m.HTCapabilities)
 
 				// Assign the modified struct to the digested macs
 				digestedMacs[mac] = m
@@ -483,7 +486,8 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 					TypeCount:         data.TypeCount,
 					Manufacturer:      GetMacVendor(mac),
 					OuiID:             GetMacPrefix(mac),
-					SSIDProbes:        data.SSIDProbes,
+					SSIDProbes:        DeduplicateSlice(data.SSIDProbes),
+					HTCapabilities:    DeduplicateSlice(data.HTCapabilities),
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -730,6 +734,7 @@ type MacMetadata struct {
 	Signature             string   `json:"signature"`
 	TypeCount             [3]int   `json:"type_count"`
 	SSIDProbes            []string `json:"ssid_probes"`
+	HTCapabilities        []string `json:"ht_capabilities"`
 }
 
 type ConfigResponse struct {
@@ -766,6 +771,7 @@ type MacDigest struct {
 	TypeCount         [3]int   `json:"type_count"`
 	PresenceRecord    []bool   `json:"presence_record"`
 	SSIDProbes        []string `json:"ssid_probes"`
+	HTCapabilities    []string `json:"ht_capabilities"`
 }
 
 func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
