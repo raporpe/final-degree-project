@@ -39,6 +39,9 @@ struct MacMetadata {
     vector<int> typeCount;
     vector<string> ssidProbes;
     vector<string> htCapabilities;
+    string extendedHTCapabilities;
+    vector<string> tags;
+    vector<string> supportedRates;
 };
 
 
@@ -60,7 +63,9 @@ class PacketManager {
 
     void syncPersonalMacs();
 
-    void countDevice(mac macAddress, double signalStrength, string ssidProbe, string htCapabilities, int type);
+    void countDevice(mac macAddress, double signalStrength, string ssidProbe,
+                                string htCapabilities, string htExtendedCapabilities,
+                                vector<int> tags, vector<float> supportedRates, int type);
 
     void registerManagement(Dot11ManagementFrame *managementFrame, double signalStrength);
 

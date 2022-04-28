@@ -147,3 +147,4 @@ bool is_monitor_mode(string interface) {
 
     return res == "monitor";
 }
+
