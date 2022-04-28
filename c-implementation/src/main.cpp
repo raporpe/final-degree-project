@@ -41,10 +41,12 @@ void PacketManager::uploadToBackend()
         macMetadata["detection_count"] = kv.second.detectionCount;
         macMetadata["average_signal_strength"] =
             kv.second.averageSignalStrenght;
-        macMetadata["signature"] = kv.second.signature;
         macMetadata["type_count"] = kv.second.typeCount;
         macMetadata["ssid_probes"] = kv.second.ssidProbes;
         macMetadata["ht_capabilities"] = kv.second.htCapabilities;
+        macMetadata["ht_extended_capabilities"] = kv.second.extendedHTCapabilities;
+        macMetadata["supported_rates"] = kv.second.supportedRates;
+        macMetadata["tags"] = kv.second.tags;
         macs[kv.first.to_string()] = macMetadata;
     }
 

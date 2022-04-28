@@ -35,7 +35,6 @@ struct UploadJSONData {
 struct MacMetadata {
     int detectionCount;
     double averageSignalStrenght;
-    string signature;
     vector<int> typeCount;
     vector<string> ssidProbes;
     vector<string> htCapabilities;
