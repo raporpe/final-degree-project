@@ -480,14 +480,17 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 			} else {
 				// If the mac does no exist, create struct
 				m := MacDigest{
-					Mac:               mac,
-					AvgSignalStrength: data.AverageSignalStrength,
-					PresenceRecord:    make([]bool, expectedWindowsBetween),
-					TypeCount:         data.TypeCount,
-					Manufacturer:      GetMacVendor(mac),
-					OuiID:             GetMacPrefix(mac),
-					SSIDProbes:        DeduplicateSlice(data.SSIDProbes),
-					HTCapabilities:    DeduplicateSlice(data.HTCapabilities),
+					Mac:                    mac,
+					AvgSignalStrength:      data.AverageSignalStrength,
+					PresenceRecord:         make([]bool, expectedWindowsBetween),
+					TypeCount:              data.TypeCount,
+					Manufacturer:           GetMacVendor(mac),
+					OuiID:                  GetMacPrefix(mac),
+					SSIDProbes:             DeduplicateSlice(data.SSIDProbes),
+					HTCapabilities:         DeduplicateSlice(data.HTCapabilities),
+					HTExtendedCapabilities: DeduplicateSlice(data.HTExtendedCapabilities),
+					SupportedRates:         DeduplicateSlice(data.SupportedRates),
+					Tags:                   DeduplicateSlice(data.Tags),
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -729,12 +732,14 @@ type ReturnRooms struct {
 }
 
 type MacMetadata struct {
-	AverageSignalStrength float64  `json:"average_signal_strength"`
-	DetectionCount        int      `json:"detection_count"`
-	Signature             string   `json:"signature"`
-	TypeCount             [3]int   `json:"type_count"`
-	SSIDProbes            []string `json:"ssid_probes"`
-	HTCapabilities        []string `json:"ht_capabilities"`
+	AverageSignalStrength  float64   `json:"average_signal_strength"`
+	DetectionCount         int       `json:"detection_count"`
+	TypeCount              [3]int    `json:"type_count"`
+	SSIDProbes             []string  `json:"ssid_probes"`
+	HTCapabilities         []string  `json:"ht_capabilities"`
+	HTExtendedCapabilities []string  `json:"ht_extended_capabilities"`
+	SupportedRates         []float64 `json:"supported_rates"`
+	Tags                   []int     `json:"tags"`
 }
 
 type ConfigResponse struct {
@@ -764,14 +769,17 @@ func (CaptureDevicesDB) TableName() string {
 }
 
 type MacDigest struct {
-	Mac               string   `json:"mac"`
-	AvgSignalStrength float64  `json:"average_signal_strenght"`
-	Manufacturer      *string  `json:"manufacturer"` // Manufacturer is nullable
-	OuiID             string   `json:"oui_id"`
-	TypeCount         [3]int   `json:"type_count"`
-	PresenceRecord    []bool   `json:"presence_record"`
-	SSIDProbes        []string `json:"ssid_probes"`
-	HTCapabilities    []string `json:"ht_capabilities"`
+	Mac                    string    `json:"mac"`
+	AvgSignalStrength      float64   `json:"average_signal_strenght"`
+	Manufacturer           *string   `json:"manufacturer"` // Manufacturer is nullable
+	OuiID                  string    `json:"oui_id"`
+	TypeCount              [3]int    `json:"type_count"`
+	PresenceRecord         []bool    `json:"presence_record"`
+	SSIDProbes             []string  `json:"ssid_probes"`
+	HTCapabilities         []string  `json:"ht_capabilities"`
+	HTExtendedCapabilities []string  `json:"ht_extended_capabilities"`
+	SupportedRates         []float64 `json:"supported_rates"`
+	Tags                   []int     `json:"tags"`
 }
 
 func (m MacDigest) DistanceTo(other dbscan.Point) float64 {

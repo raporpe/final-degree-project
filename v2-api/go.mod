@@ -1,6 +1,6 @@
 module data-ingest
 
-go 1.17
+go 1.18
 
 require (
 	github.com/bits-and-blooms/bitset v1.2.2
