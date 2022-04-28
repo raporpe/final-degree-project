@@ -25,6 +25,9 @@
         "sstream": "cpp",
         "stop_token": "cpp",
         "streambuf": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "atomic": "cpp",
+        "cmath": "cpp",
+        "stdexcept": "cpp"
     }
 }
