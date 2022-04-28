@@ -386,6 +386,9 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
         vector<float> supportedRates = managementFrame->supported_rates();
         vector<float> supportedExtendedRates = managementFrame->supported_rates();
         
+        // Copy supportedExtendedRates into supportedRates
+        copy(supportedExtendedRates.begin(), supportedExtendedRates.end(), back_inserter(supportedRates));
+        
         // Get the tags in order
         vector<int> tags = getOptionsInt(managementFrame->options());
 
