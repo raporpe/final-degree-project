@@ -49,6 +49,7 @@ func main() {
 	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
 	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/clustered-macs", GetClusteredMacsHandler).Methods("GET")
+	r.HandleFunc("/v1/rooms", GetRoomsHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -90,22 +91,33 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	// Read the query param start_time
-	startTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
-	if err != nil {
-		log.Println("Invalid start_time!: " + err.Error())
-		w.WriteHeader(500)
-		w.Write([]byte("Invalid start_time"))
-		return
-	}
+	// Get the start time and end time
+	startTime, endTime := GetStartEndTime()
 
-	// Read the query param end_time
-	endTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
-	if err != nil {
-		log.Println("Invalid end_time!")
-		w.WriteHeader(500)
-		w.Write([]byte("Invalid end_time"))
-		return
+	// If the start time and the end time are set, then override defaults
+	startTimeSet := r.URL.Query().Get("start_time") != ""
+	endTimeSet := r.URL.Query().Get("end_time") != ""
+
+	if endTimeSet || startTimeSet {
+		var err error
+		// Read the query param start_time
+		startTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
+		if err != nil {
+			log.Println("Invalid start_time!: " + err.Error())
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid start_time"))
+			return
+		}
+
+		// Read the query param end_time
+		endTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("end_time"))
+		if err != nil {
+			log.Println("Invalid end_time!")
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid end_time"))
+			return
+		}
+
 	}
 
 	// Read the query param device_id
@@ -122,12 +134,77 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse, err := json.Marshal(&digestedMacs)
 	if err != nil {
 		w.WriteHeader(500)
-		log.Println("There was an error trying to marshall the final digested macs struct!")
+		log.Println("There was an error trying to marshall the final struct!")
 		return
 	}
 
 	w.Write([]byte(jsonResponse))
 
+}
+
+func GetRoomsHandler(w http.ResponseWriter, r *http.Request) {
+	rooms := GetRooms()
+	jsonResponse, err := json.Marshal(&rooms)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Println("There was an error trying to marshall the final struct!")
+		return
+	}
+
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Write([]byte(jsonResponse))
+}
+
+func GetRooms() ReturnRooms {
+	// Get all the current rooms
+	var allRooms []CaptureDevicesDB
+	gormDB.Find(&allRooms)
+
+	// Results: room (string) -> ocupation (int)
+	rooms := make(map[string]int)
+
+	// Bool for storing the rooms that are inconsistent
+	inconsistentRooms := []string{}
+
+	// The time up until we will get data
+	t := GetLastTime()
+
+	for _, v := range allRooms {
+
+		// Get all the clusters from all the devices in the room up until time t
+		clusteredMacs, err := GetClusteredMacs(v.RoomID, t)
+		if err != nil {
+			fmt.Printf("There was an error getting room %v: %v", v.RoomID, err.Error())
+		}
+
+		// Check if the room has any inconsistent data
+		if clusteredMacs.InconsistentData {
+			inconsistentRooms = append(inconsistentRooms, v.RoomID)
+		}
+
+		// Iterate every device in the room and merge the clusters of each device
+		var clusters [][]string
+		for _, clustersOnDevice := range clusteredMacs.Results {
+			clusters = append(clusters, clustersOnDevice...)
+			// Two clusters are considered equal when they share a % of equal macs
+			//for _, cluster := range clustersOnDevice {
+			//
+			//}
+		}
+
+		// Store how many clusters are in the room
+		rooms[v.RoomID] = len(clusters)
+
+	}
+
+	return ReturnRooms{
+		InconsistentRooms: inconsistentRooms,
+		EndTime:           t,
+		StartTime:         t.Add(-15 * time.Minute),
+		ContextSize:       15,
+		Rooms:             rooms,
+	}
 }
 
 func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +222,21 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusteredMacs, err := GetClusteredMacs(roomID)
+	// Override end_time (optional)
+	endTime := r.URL.Query().Get("end_time")
+	var parsedEndTime time.Time
+	if endTime != "" {
+		var err error
+		parsedEndTime, err = time.Parse(time.RFC3339, endTime)
+		if err != nil {
+			log.Println("Invalid end_time!")
+			w.WriteHeader(500)
+			w.Write([]byte("The specified end_time format is not valid"))
+			return
+		}
+	}
+
+	clusteredMacs, err := GetClusteredMacs(roomID, parsedEndTime)
 	if err != nil {
 		log.Println("Error calculating cluster: " + err.Error())
 		w.WriteHeader(500)
@@ -164,59 +255,95 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetClusteredMacs(roomID string) (map[string][][]string, error) {
+func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, error) {
 
 	// Get the devices that are in the room
 	var CaptureDevicesInRoom []CaptureDevicesDB
 	gormDB.Where("room_id = ?", roomID).Find(&CaptureDevicesInRoom)
 
-	// Determine the start time and end time
-	// The end time should be the current time with seconds truncated minus one
-	now := time.Now()
-	endTime := now.Truncate(60 * time.Second).Add(1 * time.Minute)
-
-	// The start time should be the end time minus the windows context
-	startTime := endTime.Add(-15 * time.Minute)
+	// Get the start time and end time
+	var startTime time.Time
+	// If the end time is not specified
+	if endTime.IsZero() {
+		startTime, endTime = GetStartEndTime()
+	} else {
+		// When the endTime is set, we calculate the start time
+		startTime = endTime.Add(-15 * time.Minute)
+	}
 
 	// Create the return variable, a map from devices to clusters
-	toReturn := make(map[string][][]string)
+	results := make(map[string][][]string)
+
+	// To note if there was any inconsistency and return it at the end
+	inconsistentData := false
 
 	// Iterate over every device in the room
 	for _, device := range CaptureDevicesInRoom {
 		deviceID := device.DeviceID
 		digestedMacs := GetDigestedMacs(deviceID, startTime, endTime)
 
-		var newDigest []MacDigest
+		// Check for inconsistent data
+		inconsistentData = inconsistentData || digestedMacs.InconsistentData
+
+		// Exclude mac addresses that are not active
+		//var activeMacs []string
+
+		// Separate those macs that are real
+		var realMacs []string
 		for _, v := range digestedMacs.Digest {
-			newDigest = append(newDigest, v)
+			if v.Manufacturer != nil {
+				realMacs = append(realMacs, v.Mac)
+			}
 		}
 
-		//fmt.Printf("newDigest: %v\n", newDigest)
-
+		// Convert from MacDigest type into dbscan.Point type
+		// Only fake macs will go trough this process
 		var points []dbscan.Point
-		for _, v := range newDigest {
-			points = append(points, v)
+		for _, v := range digestedMacs.Digest {
+			if v.Manufacturer == nil {
+				points = append(points, v)
+			}
 		}
 
-		DBScanResult := dbscan.Cluster(2, 1.0, points)
+		DBScanResult := dbscan.Cluster(0, 0.2, points)
 
-		//fmt.Printf("DBScanResult: %v\n", DBScanResult)
-
+		// Convert from points into strings (macs)
 		var clusters [][]string
 
 		for _, c := range DBScanResult {
 			var cluster []string
 			for _, p := range c {
 				cluster = append(cluster, p.(MacDigest).Mac)
-				//fmt.Printf("cluster: %v\n", cluster)
 			}
 			clusters = append(clusters, cluster)
 		}
 
-		toReturn[deviceID] = clusters
+		fmt.Printf("DBScanResult: %v\n", len(DBScanResult))
 
-		//fmt.Printf("clusters: %v\n", clusters)
+		// Insert the real macs as unique clusters
+		//for _, r := range realMacs {
+		//	clusters = append(clusters, []string{r})
+		//}
 
+		fmt.Printf("starting macs: %v\n", len(digestedMacs.Digest))
+		endingMacs := 0
+		for _, i := range clusters {
+			for range i {
+				endingMacs += 1
+			}
+		}
+
+		fmt.Printf("ending macs: %v\n", endingMacs)
+
+		results[deviceID] = clusters
+
+	}
+
+	toReturn := ReturnClusteredMacs{
+		StartTime:        startTime,
+		EndTime:          endTime,
+		InconsistentData: inconsistentData,
+		Results:          results,
 	}
 
 	return toReturn, nil
@@ -343,6 +470,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 				m.TypeCount[0] += data.TypeCount[0]
 				m.TypeCount[1] += data.TypeCount[1]
 				m.TypeCount[2] += data.TypeCount[2]
+				m.SSIDProbes = append(m.SSIDProbes, data.SSIDProbes...)
 
 				// Assign the modified struct to the digested macs
 				digestedMacs[mac] = m
@@ -355,6 +483,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 					TypeCount:         data.TypeCount,
 					Manufacturer:      GetMacVendor(mac),
 					OuiID:             GetMacPrefix(mac),
+					SSIDProbes:        data.SSIDProbes,
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -581,13 +710,26 @@ type ReturnDetectedMacs struct {
 }
 
 type ReturnClusteredMacs struct {
+	StartTime        time.Time             `json:"start_time"`
+	EndTime          time.Time             `json:"end_time"`
+	InconsistentData bool                  `json:"inconsistent_data"`
+	Results          map[string][][]string `json:"results"`
+}
+
+type ReturnRooms struct {
+	EndTime           time.Time      `json:"end_time"`
+	StartTime         time.Time      `json:"start_time"`
+	ContextSize       int            `json:"context_size"`
+	InconsistentRooms []string       `json:"inconsistent_rooms"`
+	Rooms             map[string]int `json:"rooms"`
 }
 
 type MacMetadata struct {
-	AverageSignalStrength float64 `json:"average_signal_strength"`
-	DetectionCount        int     `json:"detection_count"`
-	Signature             string  `json:"signature"`
-	TypeCount             [3]int  `json:"type_count"`
+	AverageSignalStrength float64  `json:"average_signal_strength"`
+	DetectionCount        int      `json:"detection_count"`
+	Signature             string   `json:"signature"`
+	TypeCount             [3]int   `json:"type_count"`
+	SSIDProbes            []string `json:"ssid_probes"`
 }
 
 type ConfigResponse struct {
@@ -617,29 +759,81 @@ func (CaptureDevicesDB) TableName() string {
 }
 
 type MacDigest struct {
-	Mac               string  `json:"mac"`
-	AvgSignalStrength float64 `json:"average_signal_strenght"`
-	Manufacturer      *string `json:"manufacturer"` // Manufacturer is nullable
-	OuiID             string  `json:"oui_id"`
-	TypeCount         [3]int  `json:"type_count"`
-	PresenceRecord    []bool  `json:"presence_record"`
+	Mac               string   `json:"mac"`
+	AvgSignalStrength float64  `json:"average_signal_strenght"`
+	Manufacturer      *string  `json:"manufacturer"` // Manufacturer is nullable
+	OuiID             string   `json:"oui_id"`
+	TypeCount         [3]int   `json:"type_count"`
+	PresenceRecord    []bool   `json:"presence_record"`
+	SSIDProbes        []string `json:"ssid_probes"`
 }
 
 func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
-	signalDifference := 1 / (math.Abs(m.AvgSignalStrength - other.(MacDigest).AvgSignalStrength))
+	signalDifference := math.Abs(m.AvgSignalStrength - other.(MacDigest).AvgSignalStrength)
+	signalDistance := 0.0
+	if signalDifference > 1500 {
+		signalDistance = 1
+	} else {
+		signalDistance = signalDifference / 1500.0
+	}
 
-	sameManufacturer := 0.0
-	sameOUI := 0.0
-	if m.Manufacturer != nil && m.Manufacturer == other.(MacDigest).Manufacturer {
-		sameManufacturer = 1.0
-		if m.OuiID == other.(MacDigest).OuiID {
-			sameOUI = 1.0
+	// TODO: check if correctly done
+	typeDistance := 0.0
+	for idx, v := range m.TypeCount {
+		v1 := v
+		v2 := other.(MacDigest).TypeCount[idx]
+		diff := float64(v1 - v2)
+		total := float64(v1 + v2)
+		if diff != 0 {
+			typeDistance = typeDistance + (math.Abs(diff)/total)/3.0
 		}
 	}
 
-	return signalDifference + sameManufacturer + sameOUI
+	presenceDistance := 0.0
+	for idx, v := range m.PresenceRecord {
+		if v != other.(MacDigest).PresenceRecord[idx] {
+			presenceDistance = presenceDistance + 1.0/float64(len(m.PresenceRecord))
+		}
+	}
+
+	distance := (2*signalDistance + typeDistance + presenceDistance) / 4.0
+	//fmt.Printf("distance: %v\n", distance)
+
+	return distance
 }
 
 func (m MacDigest) Name() string {
 	return m.Mac
+}
+
+func GetStartEndTime() (time.Time, time.Time) {
+
+	// Determine the start time and end time
+	// The end time should be the current time with seconds truncated minus one
+	now := time.Now()
+	endTime := now.Truncate(60 * time.Second).Add(0 * time.Minute)
+
+	// The start time should be the end time minus the windows context
+	startTime := endTime.Add(-15 * time.Minute)
+
+	cet, err := time.LoadLocation("Europe/Madrid")
+	if err != nil {
+		fmt.Println("Error getting start and end time: ", err.Error())
+	}
+
+	return startTime.In(cet), endTime.In(cet)
+
+}
+
+func GetLastTime() time.Time {
+
+	now := time.Now()
+	t := now.Truncate(60 * time.Second).Add(0 * time.Minute)
+
+	cet, err := time.LoadLocation("Europe/Madrid")
+	if err != nil {
+		fmt.Println("Error getting start and end time: ", err.Error())
+	}
+
+	return t.In(cet)
 }
