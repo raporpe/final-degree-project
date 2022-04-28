@@ -38,9 +38,9 @@ struct MacMetadata {
     vector<int> typeCount;
     vector<string> ssidProbes;
     vector<string> htCapabilities;
-    string extendedHTCapabilities;
-    vector<string> tags;
-    vector<string> supportedRates;
+    vector<string> htExtendedCapabilities;
+    vector<int> tags;
+    vector<float> supportedRates;
 };
 
 

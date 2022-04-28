@@ -44,7 +44,7 @@ void PacketManager::uploadToBackend()
         macMetadata["type_count"] = kv.second.typeCount;
         macMetadata["ssid_probes"] = kv.second.ssidProbes;
         macMetadata["ht_capabilities"] = kv.second.htCapabilities;
-        macMetadata["ht_extended_capabilities"] = kv.second.extendedHTCapabilities;
+        macMetadata["ht_extended_capabilities"] = kv.second.htExtendedCapabilities;
         macMetadata["supported_rates"] = kv.second.supportedRates;
         macMetadata["tags"] = kv.second.tags;
         macs[kv.first.to_string()] = macMetadata;
@@ -227,8 +227,20 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
         // Add the ssid probe if it is set
         if (ssidProbe != "")
             detectedMacs->find(macAddress)->second.ssidProbes.push_back(ssidProbe);
+        
+        // Add htCapabilities
         if (htCapabilities != "")
             detectedMacs->find(macAddress)->second.htCapabilities.push_back(htCapabilities);
+
+        // HT Extended capabilities
+        if (htExtendedCapabilities != "")
+            detectedMacs->find(macAddress)->second.htExtendedCapabilities.push_back(htExtendedCapabilities);
+
+        // Supported rates
+        copy(supportedRates.begin(), supportedRates.end(), back_inserter(detectedMacs->find(macAddress)->second.supportedRates));
+
+        // Tags
+        copy(tags.begin(), tags.end(), back_inserter(detectedMacs->find(macAddress)->second.tags));
 
         // If the mac address has not been counted in the current window
     }
@@ -237,15 +249,31 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
         MacMetadata macMetadata;
         macMetadata.averageSignalStrenght = signalStrength;
         macMetadata.detectionCount = 1;
-        macMetadata.signature = "";
         macMetadata.typeCount = vector<int>(3, 0);
         macMetadata.typeCount[type] = 1;
+
+        // SSID probes
         macMetadata.ssidProbes = vector<string>();
         if (ssidProbe != "")
             macMetadata.ssidProbes.push_back(ssidProbe);
+
+        // HT Capabilities
         macMetadata.htCapabilities = vector<string>();
         if (htCapabilities != "")
             macMetadata.htCapabilities.push_back(htCapabilities);
+        
+        // HT Extended capabilities
+        macMetadata.htExtendedCapabilities = vector<string>();
+        if (htExtendedCapabilities != "")
+            macMetadata.htExtendedCapabilities.push_back(htExtendedCapabilities);
+
+        // Supported rates
+        macMetadata.supportedRates = vector<float>();
+        if (!supportedRates.empty()) copy(supportedRates.begin(), supportedRates.end(), back_inserter(macMetadata.supportedRates));
+
+        // Tags
+        macMetadata.tags = vector<int>();
+        if (!tags.empty()) copy(tags.begin(), tags.end(), back_inserter(macMetadata.tags));
 
         // Insert in the detected macs
         detectedMacs->insert(make_pair(macAddress, macMetadata));
