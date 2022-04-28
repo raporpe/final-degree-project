@@ -470,6 +470,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 				m.TypeCount[0] += data.TypeCount[0]
 				m.TypeCount[1] += data.TypeCount[1]
 				m.TypeCount[2] += data.TypeCount[2]
+				m.SSIDProbes = append(m.SSIDProbes, data.SSIDProbes...)
 
 				// Assign the modified struct to the digested macs
 				digestedMacs[mac] = m
@@ -482,6 +483,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 					TypeCount:         data.TypeCount,
 					Manufacturer:      GetMacVendor(mac),
 					OuiID:             GetMacPrefix(mac),
+					SSIDProbes:        data.SSIDProbes,
 				}
 				// Set the presence record to true
 				m.PresenceRecord[currentWindowNumber] = true
@@ -723,10 +725,11 @@ type ReturnRooms struct {
 }
 
 type MacMetadata struct {
-	AverageSignalStrength float64 `json:"average_signal_strength"`
-	DetectionCount        int     `json:"detection_count"`
-	Signature             string  `json:"signature"`
-	TypeCount             [3]int  `json:"type_count"`
+	AverageSignalStrength float64  `json:"average_signal_strength"`
+	DetectionCount        int      `json:"detection_count"`
+	Signature             string   `json:"signature"`
+	TypeCount             [3]int   `json:"type_count"`
+	SSIDProbes            []string `json:"ssid_probes"`
 }
 
 type ConfigResponse struct {
@@ -756,12 +759,13 @@ func (CaptureDevicesDB) TableName() string {
 }
 
 type MacDigest struct {
-	Mac               string  `json:"mac"`
-	AvgSignalStrength float64 `json:"average_signal_strenght"`
-	Manufacturer      *string `json:"manufacturer"` // Manufacturer is nullable
-	OuiID             string  `json:"oui_id"`
-	TypeCount         [3]int  `json:"type_count"`
-	PresenceRecord    []bool  `json:"presence_record"`
+	Mac               string   `json:"mac"`
+	AvgSignalStrength float64  `json:"average_signal_strenght"`
+	Manufacturer      *string  `json:"manufacturer"` // Manufacturer is nullable
+	OuiID             string   `json:"oui_id"`
+	TypeCount         [3]int   `json:"type_count"`
+	PresenceRecord    []bool   `json:"presence_record"`
+	SSIDProbes        []string `json:"ssid_probes"`
 }
 
 func (m MacDigest) DistanceTo(other dbscan.Point) float64 {
