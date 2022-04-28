@@ -5,6 +5,8 @@
 #include <tins/tins.h>
 #include <unistd.h>
 
+#include <climits>
+
 #include <bitset>
 #include <ctime>
 #include <iostream>
@@ -39,6 +41,8 @@ void PacketManager::uploadToBackend() {
             kv.second.averageSignalStrenght;
         macMetadata["signature"] = kv.second.signature;
         macMetadata["type_count"] = kv.second.typeCount;
+        macMetadata["ssid_probes"] = kv.second.ssidProbes;
+        macMetadata["ht_capabilities"] = kv.second.htCapabilities;
         macs[kv.first.to_string()] = macMetadata;
     }
 
@@ -65,11 +69,12 @@ void PacketManager::uploadToBackend() {
     SQLite::Statement query(*this->db, "SELECT * FROM WINDOWS");
     while(query.executeStep()) {
         int id = query.getColumn(0);
-        string storedJSON = query.getColumn(0);
+        string storedJSON = query.getColumn(1).getText();
         // Try to send to backend 
         bool correctPost = true;
+        cout << "aaaaaaaaaaaaa" << endl << storedJSON << endl << "aaaaaaaaaa" << endl;
         try {
-            postJSON(url, storedJSON);
+            postJSON(url, json::parse(storedJSON));
         } catch (UnavailableBackendException &e) {
             correctPost = false;
             break;
@@ -146,7 +151,7 @@ void PacketManager::uploader() {
     }
 }
 
-void PacketManager::countDevice(mac macAddress, double signalStrength,
+void PacketManager::countDevice(mac macAddress, double signalStrength, string ssidProbe, string htCapabilities, 
                                 int type) {
     // Do not allow invalid macs (multicast and broadcast)
     if (!isMacValid(macAddress)) return;
@@ -189,6 +194,10 @@ void PacketManager::countDevice(mac macAddress, double signalStrength,
         // Increase the count of the type
         detectedMacs->find(macAddress)->second.typeCount[type]++;
 
+        // Add the ssid probe if it is set
+        if (ssidProbe != "") detectedMacs->find(macAddress)->second.ssidProbes.push_back(ssidProbe);
+        if (htCapabilities != "") detectedMacs->find(macAddress)->second.htCapabilities.push_back(htCapabilities);
+
         // If the mac address has not been counted in the current window
     } else {
         MacMetadata macMetadata;
@@ -197,6 +206,10 @@ void PacketManager::countDevice(mac macAddress, double signalStrength,
         macMetadata.signature = "";
         macMetadata.typeCount = vector<int>(3, 0);
         macMetadata.typeCount[type] = 1;
+        macMetadata.ssidProbes = vector<string>();
+        if (ssidProbe != "") macMetadata.ssidProbes.push_back(ssidProbe);
+        macMetadata.htCapabilities = vector<string>();
+        if (htCapabilities != "") macMetadata.htCapabilities.push_back(htCapabilities);
 
         // Insert in the detected macs
         detectedMacs->insert(make_pair(macAddress, macMetadata));
@@ -267,22 +280,33 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
         cout << "NULL managementframe!!!" << endl;
     }
     if (managementFrame->subtype() == Dot11::ManagementSubtypes::PROBE_REQ) {
+
         mac stationAddress = managementFrame->addr2();
+        string ssidProbe = managementFrame->ssid();
+        const Dot11::option* htCapabilites = managementFrame->search_option(Dot11::HT_CAPABILITY);
+        stringstream ht;
+        ht << "0x" << std::hex << (int) *htCapabilites->data_ptr();
+
         if (showPackets) {
             cout << "Probe request  -> " << managementFrame->addr2()
                  << " with SSID " << managementFrame->ssid() << endl;
+
+            const Dot11::option* opt = managementFrame->search_option(Dot11::HT_CAPABILITY);
+            if (opt) cout << "options: " << ht.str() << endl;
         }
-        countDevice(stationAddress, signalStrength, Dot11::MANAGEMENT);
+        countDevice(stationAddress, signalStrength, ssidProbe, ht.str(), Dot11::MANAGEMENT);
 
     } else if (managementFrame->subtype() ==
                Dot11::ManagementSubtypes::PROBE_RESP) {
+
         mac stationAddress = managementFrame->addr2();
+        string ssidProbe = managementFrame->ssid();
 
         if (showPackets) {
             cout << "Probe response -> " << managementFrame->addr2()
                  << " with SSID " << managementFrame->ssid() << endl;
         }
-        countDevice(stationAddress, signalStrength, Dot11::MANAGEMENT);
+        countDevice(stationAddress, signalStrength, ssidProbe, "", Dot11::MANAGEMENT);
 
     } else if (false && debugMode && managementFrame->subtype() != 8 &&
                managementFrame->subtype() != 4 &&
@@ -301,7 +325,7 @@ void PacketManager::registerControl(Dot11Control *controlFrame,
     }
 
     mac address = controlFrame->addr1();
-    countDevice(address, signalStrength, Dot11::CONTROL);
+    countDevice(address, signalStrength, "", "", Dot11::CONTROL);
 }
 
 void PacketManager::registerData(Dot11Data *dataFrame, double signalStrength) {
@@ -312,7 +336,7 @@ void PacketManager::registerData(Dot11Data *dataFrame, double signalStrength) {
     }
 
     mac stationAddress = getStationMAC(dataFrame);
-    countDevice(stationAddress, signalStrength, Dot11::DATA);
+    countDevice(stationAddress, signalStrength, "", "", Dot11::DATA);
 }
 
 int main(int argc, char *argv[]) {
