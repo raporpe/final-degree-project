@@ -167,9 +167,13 @@ func GetRooms() ReturnRooms {
 	// Bool for storing the rooms that are inconsistent
 	inconsistentRooms := []string{}
 
+	// The time up until we will get data
+	t := GetLastTime()
+
 	for _, v := range allRooms {
-		// Pass empty time to avoid overriding it
-		clusteredMacs, err := GetClusteredMacs(v.RoomID, time.Time{})
+
+		// Get all the clusters from all the devices in the room up until time t
+		clusteredMacs, err := GetClusteredMacs(v.RoomID, t)
 		if err != nil {
 			fmt.Printf("There was an error getting room %v: %v", v.RoomID, err.Error())
 		}
@@ -196,6 +200,8 @@ func GetRooms() ReturnRooms {
 
 	return ReturnRooms{
 		InconsistentRooms: inconsistentRooms,
+		EndTime:           t,
+		StartTime:         t.Add(-15 * time.Minute),
 		ContextSize:       15,
 		Rooms:             rooms,
 	}
@@ -709,8 +715,10 @@ type ReturnClusteredMacs struct {
 }
 
 type ReturnRooms struct {
-	InconsistentRooms []string       `json:"inconsistent_rooms"`
+	EndTime           time.Time      `json:"end_time"`
+	StartTime         time.Time      `json:"start_time"`
 	ContextSize       int            `json:"context_size"`
+	InconsistentRooms []string       `json:"inconsistent_rooms"`
 	Rooms             map[string]int `json:"rooms"`
 }
 
@@ -811,4 +819,17 @@ func GetStartEndTime() (time.Time, time.Time) {
 
 	return startTime.In(cet), endTime.In(cet)
 
+}
+
+func GetLastTime() time.Time {
+
+	now := time.Now()
+	t := now.Truncate(60 * time.Second).Add(0 * time.Minute)
+
+	cet, err := time.LoadLocation("Europe/Madrid")
+	if err != nil {
+		fmt.Println("Error getting start and end time: ", err.Error())
+	}
+
+	return t.In(cet)
 }
