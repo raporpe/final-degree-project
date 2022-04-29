@@ -657,7 +657,7 @@ func GetMacVendor(mac string) *string {
 	}
 }
 
-func GetMacPrefix(mac string) string {
+func GetMacPrefix(mac string) *string {
 	if macDB == nil {
 		var err error
 		macDB, err = oui.OpenStaticFile("oui.txt")
@@ -666,9 +666,10 @@ func GetMacPrefix(mac string) string {
 
 	result, err := macDB.Query(mac)
 	if err != nil {
-		return ""
+		return nil
 	} else {
-		return result.Prefix.String()
+		res := result.Prefix.String()
+		return &res
 	}
 }
 
@@ -772,7 +773,7 @@ type MacDigest struct {
 	Mac                    string    `json:"mac"`
 	AvgSignalStrength      float64   `json:"average_signal_strenght"`
 	Manufacturer           *string   `json:"manufacturer"` // Manufacturer is nullable
-	OuiID                  string    `json:"oui_id"`
+	OuiID                  *string    `json:"oui_id"`
 	TypeCount              [3]int    `json:"type_count"`
 	PresenceRecord         []bool    `json:"presence_record"`
 	SSIDProbes             []string  `json:"ssid_probes"`

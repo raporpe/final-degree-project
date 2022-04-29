@@ -11,10 +11,21 @@ services:
     depends_on:
     - "api"
     restart: "unless-stopped"
+    
   api:
     build: .
     ports:
     - "5000:5000"
     environment:
     - API_PORT=5000
+    depends_on:
+    - "optics"
+    restart: "unless-stopped"
+
+  optics:
+    build: ./optics
+    volumes:
+    - "./optics:/app"
+    ports:
+    - "9000:80"
     restart: "unless-stopped"
