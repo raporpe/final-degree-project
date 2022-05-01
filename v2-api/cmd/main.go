@@ -562,8 +562,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 
 	}
 
-	// Return the digested macs
-	return ReturnDigestedMacs{
+	digest := ReturnDigestedMacs{
 		NumberOfWindows:   expectedWindowsBetween,
 		WindowsStartTimes: expectedStartTimes,
 		StartTime:         startTime,
@@ -572,6 +571,56 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 		InconsistentData:  inconsistentData,
 		InconsistentTimes: inconsistentTimes,
 	}
+
+	// Enrich data with stored metadata before returning
+	for mac, v := range digest.Digest {
+		meta, err := GetPersonalMacMetadata(mac)
+		if err != nil {
+			// Skip current mac
+			log.Printf("Error in mac %v when getting related metadata: %v", mac, err.Error())
+		}
+
+		// Merge ssid probes
+		if len(v.SSIDProbes) > 0 {
+			meta.AddSSID(v.SSIDProbes...)
+			v.SSIDProbes = meta.SSIDProbes
+		}
+
+		// Set the ht capabilities
+		if v.HTCapabilities != nil {
+			meta.HTCapabilities = v.HTCapabilities
+		} else {
+			v.HTCapabilities = meta.HTCapabilities
+		}
+
+		// Set the extended ht capabilities
+		if v.HTExtendedCapabilities != nil {
+			meta.HTExtendedCapabilities = v.HTExtendedCapabilities
+		} else {
+			v.HTExtendedCapabilities = meta.HTExtendedCapabilities
+		}
+
+		// Set the supported rates
+		if len(v.SupportedRates) > 0 {
+			meta.SupportedRates = v.SupportedRates
+		} else {
+			v.SupportedRates = meta.SupportedRates
+		}
+
+		// Set the tags
+		if len(v.Tags) > 0 {
+			meta.Tags = v.Tags
+		} else {
+			v.Tags = meta.Tags
+		}
+
+		// Save the possible new values added to the metadata store
+		meta.UpdateInDB(mac)
+
+	}
+
+	// Return the digested macs
+	return digest
 
 }
 
@@ -701,17 +750,17 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetPersonalMacMetadata(mac string) PersonalMacMetadata {
+func GetPersonalMacMetadata(mac string) (PersonalMacMetadata, error) {
 	var ret PersonalMacsDB
 	gormDB.Where("mac = ?", mac).Find(&ret)
 
 	var metadata PersonalMacMetadata
 	err := json.Unmarshal([]byte(ret.Metadata), &metadata)
 	if err != nil {
-		return PersonalMacMetadata{}
+		return PersonalMacMetadata{}, errors.New("An error ocurred retrieving personal mac metadata: " + err.Error())
 	}
 
-	return metadata
+	return metadata, nil
 }
 
 func GetMacVendor(mac string) *string {
@@ -784,14 +833,24 @@ func (RoomHistoricDB) TableName() string {
 
 type PersonalMacMetadata struct {
 	SSIDProbes             []string
-	HTCapabilities         string
-	HTExtendedCapabilities string
+	HTCapabilities         *string
+	HTExtendedCapabilities *string
 	SupportedRates         []float64
 	Tags                   []int
 }
 
-func (p PersonalMacMetadata) UpdateInDB() {
-	gormDB.Save(&p)
+func (p PersonalMacMetadata) UpdateInDB(mac string) {
+	var db PersonalMacsDB
+	gormDB.Where("mac = ?", mac).Find(&db)
+
+	meta, err := json.Marshal(p)
+	if err != nil {
+		log.Println("There was an error storing mac metadata: " + err.Error())
+		return // Ommit error
+	}
+
+	db.Metadata = string(meta)
+	gormDB.Save(&db)
 }
 
 func (p *PersonalMacMetadata) AddSSID(ssid ...string) {
@@ -835,8 +894,8 @@ type MacMetadata struct {
 	DetectionCount         int       `json:"detection_count"`
 	TypeCount              [3]int    `json:"type_count"`
 	SSIDProbes             []string  `json:"ssid_probes"`
-	HTCapabilities         string    `json:"ht_capabilities"`
-	HTExtendedCapabilities string    `json:"ht_extended_capabilities"`
+	HTCapabilities         *string   `json:"ht_capabilities"`
+	HTExtendedCapabilities *string   `json:"ht_extended_capabilities"`
 	SupportedRates         []float64 `json:"supported_rates"`
 	Tags                   []int     `json:"tags"`
 }
@@ -876,8 +935,8 @@ type MacDigest struct {
 	TypeCount              [3]int    `json:"type_count"`
 	PresenceRecord         []bool    `json:"presence_record"`
 	SSIDProbes             []string  `json:"ssid_probes"`
-	HTCapabilities         string    `json:"ht_capabilities"`
-	HTExtendedCapabilities string    `json:"ht_extended_capabilities"`
+	HTCapabilities         *string   `json:"ht_capabilities"`
+	HTExtendedCapabilities *string   `json:"ht_extended_capabilities"`
 	SupportedRates         []float64 `json:"supported_rates"`
 	Tags                   []int     `json:"tags"`
 }
