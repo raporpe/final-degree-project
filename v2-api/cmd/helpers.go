@@ -40,7 +40,6 @@ func DeduplicateSlice[K comparable](slice []K) []K {
 }
 
 func Optics(m []MacDigest) ([][]string, error) {
-	var ret [][]string
 
 	client := http.Client{
 		Timeout: 10 * time.Second,
@@ -75,9 +74,21 @@ func Optics(m []MacDigest) ([][]string, error) {
 		return nil, err
 	}
 
-	err = json.Unmarshal([]byte(body), &ret)
+	var opticsResult []int
+	err = json.Unmarshal([]byte(body), &opticsResult)
 	if err != nil {
 		return nil, err
+	}
+
+	fmt.Printf("opticsResult: %v\n", opticsResult)
+
+	ret := make([][]string, len(DeduplicateSlice(opticsResult)))
+
+	for k, v := range opticsResult {
+		if v < 0 {
+			continue
+		}
+		ret[v] = append(ret[v], m[k].Mac)
 	}
 
 	return ret, nil
