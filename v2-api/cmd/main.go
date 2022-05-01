@@ -382,16 +382,33 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 
 		// From map to array
 		var analyse []MacDigest
+		var noAnalyse []MacDigest
 		for _, v := range digestedMacs.Digest {
-			analyse = append(analyse, v)
+			// If the packet does not have a manufacturer, analyse it
+			if v.Manufacturer == nil {
+				analyse = append(analyse, v)
+			} else {
+				// If the packet does have a manufacturer,
+				// no clustering is needed
+				noAnalyse = append(noAnalyse, v)
+			}
 		}
 
+		// Get the clusters from the analysis
 		clusters, err := Optics(analyse)
 		if err != nil {
 			return ReturnClusteredMacs{}, err
 		}
 
-		fmt.Printf("cluster: %v\n", len(clusters))
+		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
+
+		// Append to the clusters the macs that were not analyzed
+		for _, v := range noAnalyse {
+			// The not analyzed macs are true, so they are a cluster by themselves
+			clusters = append(clusters, []string{v.Mac})
+		}
+
+		fmt.Printf("Analyzed + non analyzed clusters: %v\n", len(clusters))
 
 		results[deviceID] = clusters
 
