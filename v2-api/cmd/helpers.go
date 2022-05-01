@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -42,13 +43,15 @@ func Optics(m []MacDigest) ([][]string, error) {
 	var ret [][]string
 
 	client := http.Client{
-		Timeout: 10,
+		Timeout: 10 * time.Second,
 	}
 
 	j, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("j: %v\n", string(j))
 
 	req, err := http.NewRequest("POST", "http://optics/", bytes.NewBuffer(j))
 	if err != nil {
@@ -66,7 +69,7 @@ func Optics(m []MacDigest) ([][]string, error) {
 		return nil, errors.New("Not 200 response")
 	}
 
-	// Read the body and decode the response 
+	// Read the body and decode the response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

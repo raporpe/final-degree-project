@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+from numpy import ndarray
 import uvicorn
 from pydantic import BaseModel
 from sklearn.cluster import OPTICS, cluster_optics_dbscan
+import numpy as np
 
 app = FastAPI()
 
@@ -13,22 +15,33 @@ class MacDigest(BaseModel):
     oui_id: str | None
     type_count: list[int]
     presence_record: list[bool]
-    ssid_probes: list[str]
-    ht_capabilities: list[str]
-    ht_extended_capabilities: list[str]
-    supported_rates: list[str]
-    tags: list[int]
+    ssid_probes: list[str] | None
+    ht_capabilities: list[str] | None
+    ht_extended_capabilities: list[str] | None
+    supported_rates: list[str] | None
+    tags: list[int] | None
 
 
 # response_model te da el formato del return que prefieras
 @app.post("/") #response_model=list(list(str)))
 def optics(mac_digests: list[MacDigest]):
+    digests = []
+    for m in mac_digests:
+        digests.append([m.average_signal_strenght, len(m.tags) if m.tags != None else 0])
 
-    clust = OPTICS(min_samples=2, max_eps=10, metric=distance)
-    res = clust.fit(mac_digests)
-    print(res)
-    return res
+    clust = OPTICS(min_samples=2, max_eps=10, metric=d)
+    clust.labels_ = [m.mac for m in mac_digests]
+    result = clust.fit(digests)
+    print("To return -> ", type(result.labels_))
+    return {
+        "result": result.labels_.tolist()
+        }
 
+
+def d(a, b):
+    print("Called d!")
+    print (a, b)
+    return 1
 
 def distance(m1: MacDigest, m2: MacDigest) -> int: 
     total = list()

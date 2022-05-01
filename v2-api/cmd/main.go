@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -49,7 +50,8 @@ func main() {
 	r.HandleFunc("/v1/personal-macs", PersonalMacsHandler)
 	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/clustered-macs", GetClusteredMacsHandler).Methods("GET")
-	r.HandleFunc("/v1/rooms", GetRoomsHandler).Methods("GET")
+	r.HandleFunc("/v1/last-room", GetLastRoomHandler).Methods("GET")
+	r.HandleFunc("/v1/room", GetRoomHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -67,6 +69,8 @@ func main() {
 	}
 
 	log.Println("Starting server on port " + serverPort)
+
+	go PeriodicRoomJob()
 
 	CheckError(server.ListenAndServe())
 
@@ -142,8 +146,8 @@ func DigestedMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetRoomsHandler(w http.ResponseWriter, r *http.Request) {
-	rooms := GetRooms()
+func GetLastRoomHandler(w http.ResponseWriter, r *http.Request) {
+	rooms := GetRooms(GetLastTime())
 	jsonResponse, err := json.Marshal(&rooms)
 	if err != nil {
 		w.WriteHeader(500)
@@ -156,9 +160,101 @@ func GetRoomsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonResponse))
 }
 
-func GetRooms() ReturnRooms {
+func GetRoomHandler(w http.ResponseWriter, r *http.Request) {
+	room, err := GetLastRoomInDB()
+	if err != nil {
+		w.WriteHeader(500)
+		log.Println("There was an error getting last room in database")
+		return
+	}
+
+	jsonResponse, err := json.Marshal(&room)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Println("There was an error trying to marshall the final struct!")
+		return
+	}
+
+	w.Header().Add("Content-type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Write([]byte(jsonResponse))
+}
+
+func PeriodicRoomJob() {
+
+	// Get last time and compare with database
+	lastTime := GetLastTime()
+	db, _ := GetLastRoomInDB()
+
+	// If the current time has alredy been processed
+	if lastTime == db.EndTime {
+		sleepTime := 60 - time.Now().Second() + 30 // Extra 30 seconds to have half a minute extra
+		fmt.Printf("sleepTime: %v\n", sleepTime)
+		time.Sleep(time.Duration(sleepTime) * time.Second)
+	} else {
+		log.Println("Storing room data...")
+		StoreRoomInDB(GetRooms(GetLastTime()))
+	}
+
+	// Infinite loop
+	for {
+		log.Println("Storing room data...")
+		StoreRoomInDB(GetRooms(GetLastTime()))
+
+		sleepTime := 60 - time.Now().Second() + 30 // Extra 30 seconds to have half a minute extra
+		time.Sleep(time.Duration(sleepTime) * time.Second)
+	}
+
+}
+
+func StoreRoomInDB(r ReturnRooms) error {
+	// Generate the uuid for the room date
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		return errors.New("Cannot generate UUID")
+	}
+
+	// Get locale
+	l, err := time.LoadLocation("Europe/Madrid")
+	if err != nil {
+		return errors.New("Cannot load time locale")
+	}
+
+	// Generate encoded data to store in db
+	data, err := json.Marshal(r)
+	if err != nil {
+		return errors.New("Cannot encode data")
+	}
+
+	gormDB.Create(&RoomHistoricDB{
+		ID:   uuid,
+		Date: time.Now().In(l),
+		Data: string(data),
+	})
+
+	return nil
+}
+
+func GetLastRoomInDB() (ReturnRooms, error) {
+
+	// Find the last room in database
+	var roomInDB RoomHistoricDB
+	gormDB.Order("date DESC").Find(&roomInDB)
+
+	// Decode the data that is stored in the database
+	var room ReturnRooms
+
+	err := json.Unmarshal([]byte(roomInDB.Data), &room)
+	if err != nil {
+		return ReturnRooms{}, errors.New("Error deserializing data stored in DB. Possible data corruption!")
+	}
+
+	return room, nil
+}
+
+func GetRooms(lastTime time.Time) ReturnRooms {
 	// Get all the current rooms
-	var allRooms []CaptureDevicesDB
+	var allRooms []RoomsDB
 	gormDB.Find(&allRooms)
 
 	// Results: room (string) -> ocupation (int)
@@ -167,13 +263,10 @@ func GetRooms() ReturnRooms {
 	// Bool for storing the rooms that are inconsistent
 	inconsistentRooms := []string{}
 
-	// The time up until we will get data
-	t := GetLastTime()
-
 	for _, v := range allRooms {
 
 		// Get all the clusters from all the devices in the room up until time t
-		clusteredMacs, err := GetClusteredMacs(v.RoomID, t)
+		clusteredMacs, err := GetClusteredMacs(v.RoomID, lastTime)
 		if err != nil {
 			fmt.Printf("There was an error getting room %v: %v", v.RoomID, err.Error())
 		}
@@ -200,8 +293,8 @@ func GetRooms() ReturnRooms {
 
 	return ReturnRooms{
 		InconsistentRooms: inconsistentRooms,
-		EndTime:           t,
-		StartTime:         t.Add(-15 * time.Minute),
+		EndTime:           lastTime,
+		StartTime:         lastTime.Add(-15 * time.Minute),
 		ContextSize:       15,
 		Rooms:             rooms,
 	}
@@ -258,7 +351,7 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, error) {
 
 	// Get the devices that are in the room
-	var CaptureDevicesInRoom []CaptureDevicesDB
+	var CaptureDevicesInRoom []RoomsDB
 	gormDB.Where("room_id = ?", roomID).Find(&CaptureDevicesInRoom)
 
 	// Get the start time and end time
@@ -286,54 +379,19 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
-		//var activeMacs []string
 
-		// Separate those macs that are real
-		var realMacs []string
+		// From map to array
+		var analyse []MacDigest
 		for _, v := range digestedMacs.Digest {
-			if v.Manufacturer != nil {
-				realMacs = append(realMacs, v.Mac)
-			}
+			analyse = append(analyse, v)
 		}
 
-		// Convert from MacDigest type into dbscan.Point type
-		// Only fake macs will go trough this process
-		var points []dbscan.Point
-		for _, v := range digestedMacs.Digest {
-			if v.Manufacturer == nil {
-				points = append(points, v)
-			}
+		clusters, err := Optics(analyse)
+		if err != nil {
+			return ReturnClusteredMacs{}, err
 		}
 
-		DBScanResult := dbscan.Cluster(0, 0.2, points)
-
-		// Convert from points into strings (macs)
-		var clusters [][]string
-
-		for _, c := range DBScanResult {
-			var cluster []string
-			for _, p := range c {
-				cluster = append(cluster, p.(MacDigest).Mac)
-			}
-			clusters = append(clusters, cluster)
-		}
-
-		fmt.Printf("DBScanResult: %v\n", len(DBScanResult))
-
-		// Insert the real macs as unique clusters
-		//for _, r := range realMacs {
-		//	clusters = append(clusters, []string{r})
-		//}
-
-		fmt.Printf("starting macs: %v\n", len(digestedMacs.Digest))
-		endingMacs := 0
-		for _, i := range clusters {
-			for range i {
-				endingMacs += 1
-			}
-		}
-
-		fmt.Printf("ending macs: %v\n", endingMacs)
+		fmt.Printf("cluster: %v\n", len(clusters))
 
 		results[deviceID] = clusters
 
@@ -430,12 +488,12 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 		for _, i := range inconsistentTimes {
 			if i.Equal(expectedTime) {
 				skip = true
-				log.Printf("SKIPPING windo w.StartTime: %v\n", expectedTime)
+				//log.Printf("SKIPPING windo w.StartTime: %v\n", expectedTime)
 			}
 		}
 
 		if skip {
-			log.Printf("SKIPPING window.StartTime: %v\n", expectedTime)
+			//log.Printf("SKIPPING window.StartTime: %v\n", expectedTime)
 			continue
 		}
 
@@ -449,7 +507,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 		}
 
 		currentWindowNumber := int(window.StartTime.Sub(startTime).Seconds()) / windowSizeSeconds
-		log.Printf("currentWindowNumber: %v\n", currentWindowNumber)
+		//log.Printf("currentWindowNumber: %v\n", currentWindowNumber)
 
 		// Generate the mac metadata struct back from db
 		var macMetadata map[string]MacMetadata
@@ -700,6 +758,16 @@ func (DetectedMacDB) TableName() string {
 	return "detected_macs"
 }
 
+type RoomHistoricDB struct {
+	ID   uuid.UUID `gorm:"type:uuid;primary_key;" json:"-"`
+	Date time.Time
+	Data string
+}
+
+func (RoomHistoricDB) TableName() string {
+	return "room_historic"
+}
+
 type ReturnDigestedMacs struct {
 	NumberOfWindows   int                  `json:"number_of_windows"`
 	WindowsStartTimes []time.Time          `json:"windows_start_times"`
@@ -760,20 +828,20 @@ func (PersonalMacsDB) TableName() string {
 	return "personal_macs"
 }
 
-type CaptureDevicesDB struct {
+type RoomsDB struct {
 	DeviceID string `json:"device_id"`
 	RoomID   string `json:"room_id"`
 }
 
-func (CaptureDevicesDB) TableName() string {
-	return "capture_devices"
+func (RoomsDB) TableName() string {
+	return "rooms"
 }
 
 type MacDigest struct {
 	Mac                    string    `json:"mac"`
 	AvgSignalStrength      float64   `json:"average_signal_strenght"`
 	Manufacturer           *string   `json:"manufacturer"` // Manufacturer is nullable
-	OuiID                  *string    `json:"oui_id"`
+	OuiID                  *string   `json:"oui_id"`
 	TypeCount              [3]int    `json:"type_count"`
 	PresenceRecord         []bool    `json:"presence_record"`
 	SSIDProbes             []string  `json:"ssid_probes"`
