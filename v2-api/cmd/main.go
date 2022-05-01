@@ -528,10 +528,11 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 				m.TypeCount[0] += data.TypeCount[0]
 				m.TypeCount[1] += data.TypeCount[1]
 				m.TypeCount[2] += data.TypeCount[2]
-				m.SSIDProbes = append(m.SSIDProbes, data.SSIDProbes...)
-				m.HTCapabilities = append(m.HTCapabilities, data.HTCapabilities...)
-				m.SSIDProbes = DeduplicateSlice(m.SSIDProbes)
-				m.HTCapabilities = DeduplicateSlice(m.HTCapabilities)
+				m.SSIDProbes = DeduplicateSlice(append(m.SSIDProbes, data.SSIDProbes...))
+				m.HTCapabilities = data.HTCapabilities
+				m.HTExtendedCapabilities = data.HTExtendedCapabilities
+				m.SupportedRates = DeduplicateSlice(append(m.SupportedRates, data.SupportedRates...))
+				m.Tags = DeduplicateSlice(append(m.Tags, data.Tags...))
 
 				// Assign the modified struct to the digested macs
 				digestedMacs[mac] = m
@@ -545,8 +546,8 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 					Manufacturer:           GetMacVendor(mac),
 					OuiID:                  GetMacPrefix(mac),
 					SSIDProbes:             DeduplicateSlice(data.SSIDProbes),
-					HTCapabilities:         DeduplicateSlice(data.HTCapabilities),
-					HTExtendedCapabilities: DeduplicateSlice(data.HTExtendedCapabilities),
+					HTCapabilities:         data.HTCapabilities,
+					HTExtendedCapabilities: data.HTExtendedCapabilities,
 					SupportedRates:         DeduplicateSlice(data.SupportedRates),
 					Tags:                   DeduplicateSlice(data.Tags),
 				}
@@ -805,8 +806,8 @@ type MacMetadata struct {
 	DetectionCount         int       `json:"detection_count"`
 	TypeCount              [3]int    `json:"type_count"`
 	SSIDProbes             []string  `json:"ssid_probes"`
-	HTCapabilities         []string  `json:"ht_capabilities"`
-	HTExtendedCapabilities []string  `json:"ht_extended_capabilities"`
+	HTCapabilities         string    `json:"ht_capabilities"`
+	HTExtendedCapabilities string    `json:"ht_extended_capabilities"`
 	SupportedRates         []float64 `json:"supported_rates"`
 	Tags                   []int     `json:"tags"`
 }
@@ -845,8 +846,8 @@ type MacDigest struct {
 	TypeCount              [3]int    `json:"type_count"`
 	PresenceRecord         []bool    `json:"presence_record"`
 	SSIDProbes             []string  `json:"ssid_probes"`
-	HTCapabilities         []string  `json:"ht_capabilities"`
-	HTExtendedCapabilities []string  `json:"ht_extended_capabilities"`
+	HTCapabilities         string    `json:"ht_capabilities"`
+	HTExtendedCapabilities string    `json:"ht_extended_capabilities"`
 	SupportedRates         []float64 `json:"supported_rates"`
 	Tags                   []int     `json:"tags"`
 }
