@@ -37,8 +37,8 @@ struct MacMetadata {
     double averageSignalStrenght;
     vector<int> typeCount;
     vector<string> ssidProbes;
-    vector<string> htCapabilities;
-    vector<string> htExtendedCapabilities;
+    string htCapabilities;
+    string htExtendedCapabilities;
     vector<int> tags;
     vector<float> supportedRates;
 };

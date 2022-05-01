@@ -231,11 +231,11 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
         
         // Add htCapabilities
         if (htCapabilities != "")
-            detectedMacs->find(macAddress)->second.htCapabilities.push_back(htCapabilities);
+            detectedMacs->find(macAddress)->second.htCapabilities = htCapabilities;
 
         // HT Extended capabilities
         if (htExtendedCapabilities != "")
-            detectedMacs->find(macAddress)->second.htExtendedCapabilities.push_back(htExtendedCapabilities);
+            detectedMacs->find(macAddress)->second.htExtendedCapabilities = htExtendedCapabilities;
 
         // Supported rates
         copy(supportedRates.begin(), supportedRates.end(), back_inserter(detectedMacs->find(macAddress)->second.supportedRates));
@@ -259,14 +259,14 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
             macMetadata.ssidProbes.push_back(ssidProbe);
 
         // HT Capabilities
-        macMetadata.htCapabilities = vector<string>();
+        macMetadata.htCapabilities = "";
         if (htCapabilities != "")
-            macMetadata.htCapabilities.push_back(htCapabilities);
+            macMetadata.htCapabilities = htCapabilities;
         
         // HT Extended capabilities
-        macMetadata.htExtendedCapabilities = vector<string>();
+        macMetadata.htExtendedCapabilities = "";
         if (htExtendedCapabilities != "")
-            macMetadata.htExtendedCapabilities.push_back(htExtendedCapabilities);
+            macMetadata.htExtendedCapabilities = htExtendedCapabilities;
 
         // Supported rates
         macMetadata.supportedRates = vector<float>();
