@@ -668,7 +668,7 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &state)
 	if err != nil {
-		log.Println("Error when unmarshalling received body")
+		log.Println("Error when unmarshalling received body: " + err.Error())
 		w.WriteHeader(500)
 		return
 	}
@@ -678,7 +678,7 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate UUID
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		log.Print("Error generating UUID for inserting the detected macs! Skip this insertion.")
+		log.Print("Error generating UUID for inserting the detected macs! Skip this insertion: " + err.Error())
 		w.WriteHeader(500)
 		return
 	}
