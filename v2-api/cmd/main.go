@@ -701,6 +701,19 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func GetPersonalMacMetadata(mac string) PersonalMacMetadata {
+	var ret PersonalMacsDB
+	gormDB.Where("mac = ?", mac).Find(&ret)
+
+	var metadata PersonalMacMetadata
+	err := json.Unmarshal([]byte(ret.Metadata), &metadata)
+	if err != nil {
+		return PersonalMacMetadata{}
+	}
+
+	return metadata
+}
+
 func GetMacVendor(mac string) *string {
 	if macDB == nil {
 		var err error
@@ -769,6 +782,22 @@ func (RoomHistoricDB) TableName() string {
 	return "room_historic"
 }
 
+type PersonalMacMetadata struct {
+	SSIDProbes             []string
+	HTCapabilities         string
+	HTExtendedCapabilities string
+	SupportedRates         []float64
+	Tags                   []int
+}
+
+func (p PersonalMacMetadata) UpdateInDB() {
+	gormDB.Save(&p)
+}
+
+func (p *PersonalMacMetadata) AddSSID(ssid ...string) {
+	p.SSIDProbes = DeduplicateSlice(append(p.SSIDProbes, ssid...))
+}
+
 type ReturnDigestedMacs struct {
 	NumberOfWindows   int                  `json:"number_of_windows"`
 	WindowsStartTimes []time.Time          `json:"windows_start_times"`
@@ -822,7 +851,8 @@ type PersonalMacsUpload struct {
 }
 
 type PersonalMacsDB struct {
-	Mac string `gorm:"primary_key" json:"mac"`
+	Mac      string `gorm:"primary_key" json:"mac"`
+	Metadata string
 }
 
 func (PersonalMacsDB) TableName() string {
