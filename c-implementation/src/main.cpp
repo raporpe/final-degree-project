@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <fmt/format.h>
 
 #include "helpers.h"
 #include "CLI11.hpp"
@@ -372,15 +373,15 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
 
         // Get the HT Capabilities
         const Dot11::option *htCapabilites = managementFrame->search_option(Dot11::HT_CAPABILITY);
-        stringstream ht;
+        string ht = "";
         if (htCapabilites)
-            ht << "0x" << std::hex << (int)*htCapabilites->data_ptr();
+            ht = fmt::format("{:#x}", (int)*htCapabilites->data_ptr());
 
         // Get the HT Extended Capabilities
         const Dot11::option *htExtendedCapabilites = managementFrame->search_option(static_cast<Dot11::OptionTypes>(127));
-        stringstream htExtended;
+        string htExtended = "";
         if (htExtendedCapabilites)
-            htExtended << "0x" << std::hex << (int)*htExtendedCapabilites->data_ptr();
+            htExtended = fmt::format("{:#x}", (int)*htExtendedCapabilites->data_ptr());
 
         // Get the supported rates
         vector<float> supportedRates = managementFrame->supported_rates();
@@ -399,10 +400,10 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
 
             const Dot11::option *opt = managementFrame->search_option(Dot11::HT_CAPABILITY);
             if (opt)
-                cout << "options: " << ht.str() << endl;
-                cout << "ht extended" << htExtended.str() << endl;
+                cout << "options: " << ht << endl;
+                cout << "ht extended" << htExtended << endl;
         }
-        countDevice(stationAddress, signalStrength, ssidProbe, ht.str(), htExtended.str(), tags, supportedRates, Dot11::MANAGEMENT);
+        countDevice(stationAddress, signalStrength, ssidProbe, ht, htExtended, tags, supportedRates, Dot11::MANAGEMENT);
     }
     else if (managementFrame->subtype() ==
              Dot11::ManagementSubtypes::PROBE_RESP)
