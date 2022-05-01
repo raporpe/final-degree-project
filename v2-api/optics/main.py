@@ -16,8 +16,8 @@ class MacDigest(BaseModel):
     type_count: list[int]
     presence_record: list[bool]
     ssid_probes: list[str] | None
-    ht_capabilities: list[str] | None
-    ht_extended_capabilities: list[str] | None
+    ht_capabilities: str | None
+    ht_extended_capabilities: str | None
     supported_rates: list[str] | None
     tags: list[int] | None
 
@@ -27,7 +27,10 @@ class MacDigest(BaseModel):
 def optics(mac_digests: list[MacDigest]):
     digests = []
     for m in mac_digests:
-        digests.append([m.average_signal_strenght, len(m.tags) if m.tags != None else 0])
+        digests.append([
+            m.average_signal_strenght,
+            len(m.tags) if m.tags != None else 0
+            ])
 
     clust = OPTICS(min_samples=2, max_eps=10, metric=d)
     clust.labels_ = [m.mac for m in mac_digests]
@@ -43,7 +46,7 @@ def d(a, b):
     print (a, b)
     return 1
 
-def distance(m1: MacDigest, m2: MacDigest) -> int: 
+def distance(m1, m2) -> int: 
     total = list()
 
     # Signal strength
