@@ -1,3 +1,4 @@
+from dis import dis
 from fastapi import FastAPI
 from numpy import ndarray
 import uvicorn
@@ -29,43 +30,38 @@ def optics(mac_digests: list[MacDigest]):
     for m in mac_digests:
         digests.append([
             m.average_signal_strenght,
-            len(m.tags) if m.tags != None else 0
+            hash(m.manufacturer) if m.manufacturer != None else 0,
+            hash(m.oui_id) if m.oui_id != None else 0,
             ])
 
-    clust = OPTICS(min_samples=2, max_eps=10, metric=d)
+    clust = OPTICS(min_samples=2, max_eps=10, metric=distance)
     clust.labels_ = [m.mac for m in mac_digests]
     result = clust.fit(digests)
     print("To return -> ", type(result.labels_))
-    return {
-        "result": result.labels_.tolist()
-        }
+    return result.labels_.tolist()
 
 
-def d(a, b):
-    print("Called d!")
-    print (a, b)
-    return 1
 
-def distance(m1, m2) -> int: 
+def distance(a, b) -> int: 
     total = list()
 
-    # Signal strength
-    n = abs(m1.average_signal_strenght - m2.average_signal_strenght)/ max(m1.average_signal_strenght, m2.average_signal_strenght)
+    # Signal strength - index 0
+    n = abs(a[0] - b[0])/ max(a[0], b[0], 1)
     total.append(n)
 
-    # Manufacturer
-    total.append(1 if m1.manufacturer == m2.manufacturer and m1.manufacturer != None else 0)
+    # Manufacturer - index 1
+    total.append(1 if a[1] == b[1] and a[1] != None else 0)
 
-    # OUI
-    total.append(1 if m1.oui_id == m2.oui_id and m1.oui_id != None else 0)
+    # OUI - index 2
+    total.append(1 if a[2] == b[2] and a[2] != None else 0)
 
-    # Type count difference
-    n = 0
-    m1_total = sum(m1.type_count)
-    m2_total = sum(m2.type_count)
-    for idx, m1t in enumerate(m1.type_count):
-        n += m1t-m2.type_count[idx]
-    total.append(n/max(m1_total, m2_total))
+    # Type count difference - index 3
+    #n = 0
+    #m1_total = sum(a[3].type_count)
+    #m2_total = sum(b[3].type_count)
+    #for idx, m1t in enumerate(a[3].type_count):
+    #    n += m1t-b[3].type_count[idx]
+    #total.append(n/max(m1_total, m2_total))
 
     # Presence record difference
 
