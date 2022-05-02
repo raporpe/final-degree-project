@@ -249,7 +249,7 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
             detectedMacs->find(macAddress)->second.htExtendedCapabilities = htExtendedCapabilities;
 
         // Supported rates
-        copy(supportedRates.begin(), supportedRates.end(), back_inserter(detectedMacs->find(macAddress)->second.supportedRates));
+        copy(supportedRates.begin(), supportedRates.end(), front_inserter(detectedMacs->find(macAddress)->second.supportedRates));
 
         // Tags
         copy(tags.begin(), tags.end(), back_inserter(detectedMacs->find(macAddress)->second.tags));
