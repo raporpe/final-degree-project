@@ -44,8 +44,19 @@ void PacketManager::uploadToBackend()
             kv.second.averageSignalStrenght;
         macMetadata["type_count"] = kv.second.typeCount;
         macMetadata["ssid_probes"] = kv.second.ssidProbes;
-        macMetadata["ht_capabilities"] = kv.second.htCapabilities;
-        macMetadata["ht_extended_capabilities"] = kv.second.htExtendedCapabilities;
+
+        if (kv.second.htCapabilities == "") {
+            macMetadata["ht_capabilities"] = nullptr;
+        } else {
+            macMetadata["ht_capabilities"] = kv.second.htCapabilities;
+        }
+
+        if (kv.second.htExtendedCapabilities == "") {
+            macMetadata["ht_extended_capabilities"] = nullptr;
+        } else {
+            macMetadata["ht_extended_capabilities"] = kv.second.htExtendedCapabilities;
+        }
+
         macMetadata["supported_rates"] = kv.second.supportedRates;
         macMetadata["tags"] = kv.second.tags;
         macs[kv.first.to_string()] = macMetadata;
@@ -295,7 +306,9 @@ PacketManager::PacketManager(bool uploadBackend, string deviceID,
     this->detectedMacs = new map<mac, MacMetadata>();
     this->showPackets = showPackets;
 
-    this->db = new SQLite::Database("/home/pi/tfg_db/main.db", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    string homeDir = string(getenv("HOME"));
+    mkdir((homeDir + "/tfg_db").c_str(), 0);
+    this->db = new SQLite::Database(homeDir + "/tfg_db/main.db", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
     this->db->exec("CREATE TABLE IF NOT EXISTS WINDOWS (id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL);");
 
     // Sync the macs with the backend
