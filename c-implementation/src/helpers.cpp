@@ -44,7 +44,7 @@ bool isMacFake(mac address) { return (address[0] & 0x02) == 0x02; }
 json postJSON(string url, json j) {
     auto curl = curl_easy_init();
 
-    string jsonString = j.dump();
+    string jsonString = j.dump(-1, ' ', false, json::error_handler_t::ignore);
     if (debugMode) cout << jsonString << endl;
 
     string response;
