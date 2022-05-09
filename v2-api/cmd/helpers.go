@@ -133,10 +133,12 @@ func ClusterMerge(c1 [][]string, c2 [][]string, shareThreshold float64) [][]stri
 	}
 
 	// Traverse the second cluster and search for matches
-	for c2ClusterID, macs := range c2 {
-		for _, mac := range macs {
-			// If the mac in c2 is present on c1, then
-			if c1ClusterID, exists := index[mac]; exists {
+	for c2ClusterID, c2Cluster := range c2 {
+		mergeFlag := false
+		for _, mac := range c2Cluster {
+			// If the mac in c2 is present on c1
+			// and the current c2 cluster has not already been merged
+			if c1ClusterID, exists := index[mac]; exists && !mergeFlag {
 				// Analyze c1 cluster and compare with current one (in c2)
 				cluster1 := c1[c1ClusterID]
 				cluster2 := c2[c2ClusterID]
@@ -145,8 +147,14 @@ func ClusterMerge(c1 [][]string, c2 [][]string, shareThreshold float64) [][]stri
 				if float64(duplicates/min(len(cluster1), len(cluster2))) > shareThreshold {
 					// The cluster c2 is merged into c1
 					c1[c1ClusterID] = DeduplicateSlice(append(c1[c1ClusterID], c2[c2ClusterID]...))
+					mergeFlag = true
 				}
 			}
+		}
+		// If in this cluster there was not any merge,
+		// add it as another one
+		if !mergeFlag {
+			c1 = append(c1, c2Cluster)
 		}
 	}
 
