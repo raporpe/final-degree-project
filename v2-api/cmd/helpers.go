@@ -96,6 +96,17 @@ func SliceToString[K int | float64 | int64](slice []K) string {
 	return ret
 }
 
+func IsDeviceActive(presenceRecord []bool) bool {
+	counter := 0
+	for _, v := range presenceRecord {
+		if v {
+			counter += 1
+		}
+	}
+
+	return float64(counter/len(presenceRecord)) > 0.2
+}
+
 func Optics(m []MacDigest) ([][]string, error) {
 
 	client := http.Client{
