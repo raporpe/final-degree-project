@@ -451,6 +451,11 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
+		for k, v := range digestedMacs.Digest {
+			if !IsDeviceActive(v.PresenceRecord) {
+				delete(digestedMacs.Digest, k)
+			}
+		}
 
 		// From map to array
 		var analyse []MacDigest
@@ -468,10 +473,6 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 
 		// Get the clusters from the analysis
 		clusters := SimilarDetector(analyse)
-		fmt.Printf("clusters: %v\n", clusters)
-		//if err != nil {
-		//	return ReturnClusteredMacs{}, err
-		//}
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
 		//fmt.Printf("clusters: %v\n", clusters)
