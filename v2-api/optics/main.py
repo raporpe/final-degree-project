@@ -8,6 +8,7 @@ import numpy as np
 
 app = FastAPI()
 
+global_mem = {}
 
 class MacDigest(BaseModel):
     mac: str
@@ -27,11 +28,10 @@ class MacDigest(BaseModel):
 @app.post("/") #response_model=list(list(str)))
 def optics(mac_digests: list[MacDigest]):
     digests = []
-    for m in mac_digests:
+    for idx, m in enumerate(mac_digests):
+        global_mem[idx] = m
         digests.append([
-            m.average_signal_strenght,
-            hash(m.manufacturer) if m.manufacturer != None else 0,
-            hash(m.oui_id) if m.oui_id != None else 0,
+            hash(idx)
             ])
 
     clust = OPTICS(min_samples=2, max_eps=10, metric=distance)
@@ -43,17 +43,21 @@ def optics(mac_digests: list[MacDigest]):
 
 
 def distance(a, b) -> int: 
+    if type(a) == float or type(b) == float:
+        print("-------------------------------")
+    m1 : MacDigest = global_mem[int(a[0])]
+    m2 : MacDigest = global_mem[int(b[0])]
     total = list()
 
     # Signal strength - index 0
-    n = abs(a[0] - b[0])/ max(a[0], b[0], 1)
+    n = abs(m1.average_signal_strenght - m2.average_signal_strenght)/ max(m1.average_signal_strenght, m2.average_signal_strenght, 1)
     total.append(n)
 
     # Manufacturer - index 1
-    total.append(1 if a[1] == b[1] and a[1] != None else 0)
+    total.append(1 if m1.manufacturer == m2.manufacturer and m1.manufacturer != None else 0)
 
     # OUI - index 2
-    total.append(1 if a[2] == b[2] and a[2] != None else 0)
+    total.append(1 if m1.oui_id == m2.oui_id and m1.oui_id != None else 0)
 
     # Type count difference - index 3
     #n = 0
