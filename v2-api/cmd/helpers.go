@@ -99,14 +99,21 @@ func SliceToString[K int | float64 | int64](slice []K) string {
 }
 
 func IsDeviceActive(presenceRecord []bool) bool {
-	counter := 0
-	for _, v := range presenceRecord {
+	totalCounter := 0
+	recentCounter := 0
+	for i, v := range presenceRecord {
 		if v {
-			counter += 1
+			totalCounter += 1
+			if i >= len(presenceRecord)-len(presenceRecord)/5 {
+				recentCounter += 1
+			}
 		}
 	}
 
-	return float64(counter/len(presenceRecord)) > 0.2
+	totalActivity := float64(totalCounter/len(presenceRecord)) > 0.2
+	recentActivity := float64(recentCounter/len(presenceRecord)/5) > 0.6
+
+	return totalActivity || recentActivity
 }
 
 // Merge cluster c2 into cluster c1
