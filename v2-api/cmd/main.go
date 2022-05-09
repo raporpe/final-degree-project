@@ -350,15 +350,15 @@ func GetRooms(lastTime time.Time) ReturnRooms {
 
 		// Iterate every device in the room and merge the clusters of each device
 		var clusters [][]string
+
+		// Generate general mappign
+		// For each device in the room...
 		for _, clustersOnDevice := range clusteredMacs.Results {
-			clusters = append(clusters, clustersOnDevice...)
-			// Two clusters are considered equal when they share a % of equal macs
-			//for _, cluster := range clustersOnDevice {
-			//
-			//}
+			clusters = ClusterMerge(clusters, clustersOnDevice, 0.33)
 		}
 
 		// Store how many clusters are in the room
+		// clusters = people
 		rooms[v.RoomID] = len(clusters)
 
 	}
@@ -1032,7 +1032,7 @@ type MacDigest struct {
 	Manufacturer           *string   `json:"manufacturer"` // Manufacturer is nullable
 	OuiID                  *string   `json:"oui_id"`
 	TypeCount              [3]int    `json:"type_count"`
-	PresenceRecord         []bool    `json:"presence_record"`
+	PresenceRecord         []bool    `json:"presence_record"` // Last index in most recent
 	SSIDProbes             []string  `json:"ssid_probes"`
 	HTCapabilities         *string   `json:"ht_capabilities"`
 	HTExtendedCapabilities *string   `json:"ht_extended_capabilities"`

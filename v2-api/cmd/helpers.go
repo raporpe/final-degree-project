@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"golang.org/x/exp/constraints"
 )
 
 func howManyTrue(slice []bool) int {
@@ -105,6 +107,72 @@ func IsDeviceActive(presenceRecord []bool) bool {
 	}
 
 	return float64(counter/len(presenceRecord)) > 0.2
+}
+
+// Merge cluster c2 into cluster c1
+func ClusterMerge(c1 [][]string, c2 [][]string, shareThreshold float64) [][]string {
+
+	// The merge slice will be returned
+	merge := make([][]string, 0)
+	// Copy the slice c1 into the merge slice
+	copy(merge, c1)
+
+	// Index the cluster c1 for faster search
+	index := make(map[string]int)
+	for clusterID, macs := range c1 {
+		for _, mac := range macs {
+			index[mac] = clusterID
+		}
+	}
+
+	// Traverse the second cluster and search for matches
+	for c2ClusterID, macs := range c2 {
+		for _, mac := range macs {
+			// If the mac in c2 is present on c1, then
+			if c1ClusterID, exists := index[mac]; exists {
+				// Analyze c1 cluster and compare with current one (in c2)
+				cluster1 := c1[c1ClusterID]
+				cluster2 := c2[c2ClusterID]
+				duplicates := GetNumberOfDuplicates(cluster1, cluster2)
+				// Check if duplicates superate threshold
+				if float64(duplicates/min(len(cluster1), len(cluster2))) > shareThreshold {
+					// The cluster c2 is merged into c1
+					c1[c1ClusterID] = DeduplicateSlice(append(c1[c1ClusterID], c2[c2ClusterID]...))
+				}
+			}
+		}
+	}
+
+	return merge
+}
+
+func min[T constraints.Ordered](a T, b T) T {
+	if a >= b {
+		return b
+	} else {
+		return a
+	}
+}
+
+func GetNumberOfDuplicates[K comparable](s1 []K, s2 []K) int {
+	// Index s1
+	s1Index := make(map[K]bool, 0)
+	for _, v := range s1 {
+		s1Index[v] = true
+	}
+
+	// Count the number of matches
+	matches := 0
+
+	for _, v := range s2 {
+		// If s2 exists in s1, then mark
+		if _, exists := s1Index[v]; exists {
+			matches += 1
+		}
+	}
+
+	return matches
+
 }
 
 func Optics(m []MacDigest) ([][]string, error) {
