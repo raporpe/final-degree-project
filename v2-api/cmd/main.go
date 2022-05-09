@@ -161,7 +161,43 @@ func GetLastRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetRoomHandler(w http.ResponseWriter, r *http.Request) {
-	room, err := GetLastRoomInDB()
+
+	fromTimeSet := r.URL.Query().Get("from_time") != ""
+	toTimeSet := r.URL.Query().Get("to_time") != ""
+
+	var fromTime time.Time
+	var toTime time.Time
+	var err error
+
+	if fromTimeSet {
+		// Read the query param from_time
+		fromTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("from_time"))
+		if err != nil {
+			log.Println("Invalid from_time!: " + err.Error())
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid from_time"))
+			return
+		}
+	} else {
+		w.WriteHeader(500)
+		w.Write([]byte("If you set to time, from time is required"))
+		return
+	}
+
+	if toTimeSet {
+		// Read the query param to_time
+		toTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("to_time"))
+		if err != nil {
+			log.Println("Invalid to_time!")
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid to_time"))
+			return
+		}
+	} else {
+		toTime = GetLastTime()
+	}
+
+	room, err := GetHistoricRoomInDB(fromTime, toTime)
 	if err != nil {
 		w.WriteHeader(500)
 		log.Println("There was an error getting last room in database")
@@ -184,7 +220,7 @@ func PeriodicRoomJob() {
 
 	// Get last time and compare with database
 	lastTime := GetLastTime()
-	db, _ := GetLastRoomInDB()
+	db, _ := GetLastRoomInDB() // Get last one
 
 	// If the current time has alredy been processed
 	if lastTime == db.EndTime {
@@ -236,8 +272,6 @@ func StoreRoomInDB(r ReturnRooms) error {
 }
 
 func GetLastRoomInDB() (ReturnRooms, error) {
-
-	// Find the last room in database
 	var roomInDB RoomHistoricDB
 	gormDB.Order("date DESC").Find(&roomInDB)
 
@@ -250,6 +284,44 @@ func GetLastRoomInDB() (ReturnRooms, error) {
 	}
 
 	return room, nil
+}
+
+func GetHistoricRoomInDB(from time.Time, to time.Time) (ReturnHistoricRooms, error) {
+
+	var roomsInDB []RoomHistoricDB
+
+	gormDB.Where("date >= ? and date <= ?", from, to).Order("date DESC").Find(&roomsInDB)
+
+	var rooms []ReturnRooms
+	for _, v := range roomsInDB {
+		var room ReturnRooms
+
+		err := json.Unmarshal([]byte(v.Data), &room)
+		if err != nil {
+			return ReturnHistoricRooms{}, errors.New("Error deserializing data stored in DB. Possible data corruption!")
+		}
+
+		rooms = append(rooms, room)
+
+	}
+
+	// Convert from type ReturnRooms to ReturnHistoricRooms
+	ret := ReturnHistoricRooms{
+		FirstTime: from,
+		LastTime:  to,
+		Rooms:     make(map[string]map[time.Time]int),
+	}
+	for _, v := range rooms {
+		for r, i := range v.Rooms {
+			if _, exists := ret.Rooms[r]; !exists {
+				ret.Rooms[r] = make(map[time.Time]int)
+			}
+			ret.Rooms[r][v.EndTime] = i
+		}
+	}
+
+	return ret, nil
+
 }
 
 func GetRooms(lastTime time.Time) ReturnRooms {
@@ -395,12 +467,14 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		}
 
 		// Get the clusters from the analysis
-		clusters, err := Optics(analyse)
-		if err != nil {
-			return ReturnClusteredMacs{}, err
-		}
+		clusters := SimilarDetector(analyse)
+		fmt.Printf("clusters: %v\n", clusters)
+		//if err != nil {
+		//	return ReturnClusteredMacs{}, err
+		//}
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
+		//fmt.Printf("clusters: %v\n", clusters)
 
 		// Append to the clusters the macs that were not analyzed
 		for _, v := range noAnalyse {
@@ -409,6 +483,7 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		}
 
 		fmt.Printf("Analyzed + non analyzed clusters: %v\n", len(clusters))
+		//fmt.Printf("Analyzed + non analyzed clusters result: %v\n", clusters)
 
 		results[deviceID] = clusters
 
@@ -906,6 +981,12 @@ type ReturnRooms struct {
 	Rooms             map[string]int `json:"rooms"`
 }
 
+type ReturnHistoricRooms struct {
+	FirstTime time.Time                    `json:"start_time"`
+	LastTime  time.Time                    `json:"last_time"`
+	Rooms     map[string]map[time.Time]int `json:"rooms"`
+}
+
 type MacMetadata struct {
 	AverageSignalStrength  float64   `json:"average_signal_strength"`
 	DetectionCount         int       `json:"detection_count"`
@@ -1018,7 +1099,9 @@ func GetStartEndTime() (time.Time, time.Time) {
 func GetLastTime() time.Time {
 
 	now := time.Now()
-	t := now.Truncate(60 * time.Second).Add(0 * time.Minute)
+	t := now.Truncate(60 * time.Second).Add(0 * time.Minute).Add(-1 * time.Minute)
+
+	fmt.Printf("Generated time: %v\n", t)
 
 	cet, err := time.LoadLocation("Europe/Madrid")
 	if err != nil {

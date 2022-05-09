@@ -39,6 +39,63 @@ func DeduplicateSlice[K comparable](slice []K) []K {
 	return ret
 }
 
+func SimilarDetector(m []MacDigest) [][]string {
+
+	// Index the MacDigests by their tags
+	macIndexByTags := make(map[string][]MacDigest)
+
+	for _, v := range m {
+		// Transform tags into string
+		tag := SliceToString(v.Tags)
+
+		// Index the MacDigest struct by the tag
+		stored := macIndexByTags[tag]
+
+		// Add the MacDigest struct
+		if stored == nil {
+			macIndexByTags[tag] = []MacDigest{v}
+		} else {
+			macIndexByTags[tag] = append(macIndexByTags[tag], v)
+		}
+	}
+
+	// Now traverse the map and analyse those clusters
+	// that have more than one value
+	for _, v := range macIndexByTags {
+		if len(v) > 1 {
+			fmt.Printf("Found %v!", len(v))
+			for k, v := range v {
+				fmt.Printf("%v -> %v", k, v.Mac)
+			}
+		}
+	}
+
+	// Transform the map into the final returned type
+	var ret [][]string
+	for _, v := range macIndexByTags {
+
+		inner := make([]string, 0)
+		for _, vv := range v {
+			inner = append(inner, vv.Mac)
+		}
+
+		ret = append(ret, inner)
+
+	}
+
+	return ret
+}
+
+func SliceToString[K int | float64 | int64](slice []K) string {
+	ret := ""
+
+	for _, v := range slice {
+		ret += fmt.Sprintf("%v", v)
+	}
+
+	return ret
+}
+
 func Optics(m []MacDigest) ([][]string, error) {
 
 	client := http.Client{
