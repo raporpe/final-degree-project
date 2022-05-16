@@ -249,7 +249,7 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
             detectedMacs->find(macAddress)->second.htExtendedCapabilities = htExtendedCapabilities;
 
         // Supported rates
-        copy(supportedRates.begin(), supportedRates.end(), front_inserter(detectedMacs->find(macAddress)->second.supportedRates));
+        copy(supportedRates.begin(), supportedRates.end(), back_inserter(detectedMacs->find(macAddress)->second.supportedRates));
 
         // Tags
         copy(tags.begin(), tags.end(), back_inserter(detectedMacs->find(macAddress)->second.tags));
@@ -401,7 +401,7 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
         vector<float> supportedExtendedRates = managementFrame->supported_rates();
         
         // Copy supportedExtendedRates into supportedRates
-        copy(supportedExtendedRates.begin(), supportedExtendedRates.end(), back_inserter(supportedRates));
+        copy(supportedRates.begin(), supportedRates.end(), back_inserter(supportedExtendedRates));
         
         // Get the tags in order
         vector<int> tags = getOptionsInt(managementFrame->options());
@@ -412,9 +412,6 @@ void PacketManager::registerManagement(Dot11ManagementFrame *managementFrame,
                  << " with SSID " << managementFrame->ssid() << endl;
 
             const Dot11::option *opt = managementFrame->search_option(Dot11::HT_CAPABILITY);
-            if (opt)
-                cout << "options: " << ht << endl;
-                cout << "ht extended" << htExtended << endl;
         }
         countDevice(stationAddress, signalStrength, ssidProbe, ht, htExtended, tags, supportedRates, Dot11::MANAGEMENT);
     }
