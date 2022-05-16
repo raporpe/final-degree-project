@@ -1,3 +1,4 @@
+from dis import dis
 from fastapi import FastAPI
 from numpy import ndarray
 import uvicorn
@@ -7,6 +8,7 @@ import numpy as np
 
 app = FastAPI()
 
+global_mem = {}
 
 class MacDigest(BaseModel):
     mac: str
@@ -26,46 +28,44 @@ class MacDigest(BaseModel):
 @app.post("/") #response_model=list(list(str)))
 def optics(mac_digests: list[MacDigest]):
     digests = []
-    for m in mac_digests:
+    for idx, m in enumerate(mac_digests):
+        global_mem[idx] = m
         digests.append([
-            m.average_signal_strenght,
-            len(m.tags) if m.tags != None else 0
+            hash(idx)
             ])
 
-    clust = OPTICS(min_samples=2, max_eps=10, metric=d)
+    clust = OPTICS(min_samples=2, max_eps=10, metric=distance)
     clust.labels_ = [m.mac for m in mac_digests]
     result = clust.fit(digests)
     print("To return -> ", type(result.labels_))
-    return {
-        "result": result.labels_.tolist()
-        }
+    return result.labels_.tolist()
 
 
-def d(a, b):
-    print("Called d!")
-    print (a, b)
-    return 1
 
-def distance(m1, m2) -> int: 
+def distance(a, b) -> int: 
+    if type(a) == float or type(b) == float:
+        print("-------------------------------")
+    m1 : MacDigest = global_mem[int(a[0])]
+    m2 : MacDigest = global_mem[int(b[0])]
     total = list()
 
-    # Signal strength
-    n = abs(m1.average_signal_strenght - m2.average_signal_strenght)/ max(m1.average_signal_strenght, m2.average_signal_strenght)
+    # Signal strength - index 0
+    n = abs(m1.average_signal_strenght - m2.average_signal_strenght)/ max(m1.average_signal_strenght, m2.average_signal_strenght, 1)
     total.append(n)
 
-    # Manufacturer
+    # Manufacturer - index 1
     total.append(1 if m1.manufacturer == m2.manufacturer and m1.manufacturer != None else 0)
 
-    # OUI
+    # OUI - index 2
     total.append(1 if m1.oui_id == m2.oui_id and m1.oui_id != None else 0)
 
-    # Type count difference
-    n = 0
-    m1_total = sum(m1.type_count)
-    m2_total = sum(m2.type_count)
-    for idx, m1t in enumerate(m1.type_count):
-        n += m1t-m2.type_count[idx]
-    total.append(n/max(m1_total, m2_total))
+    # Type count difference - index 3
+    #n = 0
+    #m1_total = sum(a[3].type_count)
+    #m2_total = sum(b[3].type_count)
+    #for idx, m1t in enumerate(a[3].type_count):
+    #    n += m1t-b[3].type_count[idx]
+    #total.append(n/max(m1_total, m2_total))
 
     # Presence record difference
 

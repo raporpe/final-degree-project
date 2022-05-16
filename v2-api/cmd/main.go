@@ -161,7 +161,43 @@ func GetLastRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetRoomHandler(w http.ResponseWriter, r *http.Request) {
-	room, err := GetLastRoomInDB()
+
+	fromTimeSet := r.URL.Query().Get("from_time") != ""
+	toTimeSet := r.URL.Query().Get("to_time") != ""
+
+	var fromTime time.Time
+	var toTime time.Time
+	var err error
+
+	if fromTimeSet {
+		// Read the query param from_time
+		fromTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("from_time"))
+		if err != nil {
+			log.Println("Invalid from_time!: " + err.Error())
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid from_time"))
+			return
+		}
+	} else {
+		w.WriteHeader(500)
+		w.Write([]byte("If you set to time, from time is required"))
+		return
+	}
+
+	if toTimeSet {
+		// Read the query param to_time
+		toTime, err = time.Parse(time.RFC3339, r.URL.Query().Get("to_time"))
+		if err != nil {
+			log.Println("Invalid to_time!")
+			w.WriteHeader(500)
+			w.Write([]byte("Invalid to_time"))
+			return
+		}
+	} else {
+		toTime = GetLastTime()
+	}
+
+	room, err := GetHistoricRoomInDB(fromTime, toTime)
 	if err != nil {
 		w.WriteHeader(500)
 		log.Println("There was an error getting last room in database")
@@ -184,7 +220,7 @@ func PeriodicRoomJob() {
 
 	// Get last time and compare with database
 	lastTime := GetLastTime()
-	db, _ := GetLastRoomInDB()
+	db, _ := GetLastRoomInDB() // Get last one
 
 	// If the current time has alredy been processed
 	if lastTime == db.EndTime {
@@ -236,8 +272,6 @@ func StoreRoomInDB(r ReturnRooms) error {
 }
 
 func GetLastRoomInDB() (ReturnRooms, error) {
-
-	// Find the last room in database
 	var roomInDB RoomHistoricDB
 	gormDB.Order("date DESC").Find(&roomInDB)
 
@@ -250,6 +284,44 @@ func GetLastRoomInDB() (ReturnRooms, error) {
 	}
 
 	return room, nil
+}
+
+func GetHistoricRoomInDB(from time.Time, to time.Time) (ReturnHistoricRooms, error) {
+
+	var roomsInDB []RoomHistoricDB
+
+	gormDB.Where("date >= ? and date <= ?", from, to).Order("date DESC").Find(&roomsInDB)
+
+	var rooms []ReturnRooms
+	for _, v := range roomsInDB {
+		var room ReturnRooms
+
+		err := json.Unmarshal([]byte(v.Data), &room)
+		if err != nil {
+			return ReturnHistoricRooms{}, errors.New("Error deserializing data stored in DB. Possible data corruption!")
+		}
+
+		rooms = append(rooms, room)
+
+	}
+
+	// Convert from type ReturnRooms to ReturnHistoricRooms
+	ret := ReturnHistoricRooms{
+		FirstTime: from,
+		LastTime:  to,
+		Rooms:     make(map[string]map[time.Time]int),
+	}
+	for _, v := range rooms {
+		for r, i := range v.Rooms {
+			if _, exists := ret.Rooms[r]; !exists {
+				ret.Rooms[r] = make(map[time.Time]int)
+			}
+			ret.Rooms[r][v.EndTime] = i
+		}
+	}
+
+	return ret, nil
+
 }
 
 func GetRooms(lastTime time.Time) ReturnRooms {
@@ -278,15 +350,15 @@ func GetRooms(lastTime time.Time) ReturnRooms {
 
 		// Iterate every device in the room and merge the clusters of each device
 		var clusters [][]string
+
+		// Generate general mappign
+		// For each device in the room...
 		for _, clustersOnDevice := range clusteredMacs.Results {
-			clusters = append(clusters, clustersOnDevice...)
-			// Two clusters are considered equal when they share a % of equal macs
-			//for _, cluster := range clustersOnDevice {
-			//
-			//}
+			clusters = ClusterMerge(clusters, clustersOnDevice, 0.33)
 		}
 
 		// Store how many clusters are in the room
+		// clusters = people
 		rooms[v.RoomID] = len(clusters)
 
 	}
@@ -379,19 +451,40 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
+		for k, v := range digestedMacs.Digest {
+			if !IsDeviceActive(v.PresenceRecord) {
+				delete(digestedMacs.Digest, k)
+			}
+		}
 
 		// From map to array
 		var analyse []MacDigest
+		var noAnalyse []MacDigest
 		for _, v := range digestedMacs.Digest {
-			analyse = append(analyse, v)
+			// If the packet does not have a manufacturer, analyse it
+			if v.Manufacturer == nil {
+				analyse = append(analyse, v)
+			} else {
+				// If the packet does have a manufacturer,
+				// no clustering is needed
+				noAnalyse = append(noAnalyse, v)
+			}
 		}
 
-		clusters, err := Optics(analyse)
-		if err != nil {
-			return ReturnClusteredMacs{}, err
+		// Get the clusters from the analysis
+		clusters := SimilarDetector(analyse)
+
+		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
+		//fmt.Printf("clusters: %v\n", clusters)
+
+		// Append to the clusters the macs that were not analyzed
+		for _, v := range noAnalyse {
+			// The not analyzed macs are true, so they are a cluster by themselves
+			clusters = append(clusters, []string{v.Mac})
 		}
 
-		fmt.Printf("cluster: %v\n", len(clusters))
+		fmt.Printf("Analyzed + non analyzed clusters: %v\n", len(clusters))
+		//fmt.Printf("Analyzed + non analyzed clusters result: %v\n", clusters)
 
 		results[deviceID] = clusters
 
@@ -562,8 +655,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 
 	}
 
-	// Return the digested macs
-	return ReturnDigestedMacs{
+	digest := ReturnDigestedMacs{
 		NumberOfWindows:   expectedWindowsBetween,
 		WindowsStartTimes: expectedStartTimes,
 		StartTime:         startTime,
@@ -572,6 +664,56 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 		InconsistentData:  inconsistentData,
 		InconsistentTimes: inconsistentTimes,
 	}
+
+	// Enrich data with stored metadata before returning
+	for mac, v := range digest.Digest {
+		meta, err := GetPersonalMacMetadata(mac)
+		if err != nil {
+			// Skip current mac
+			log.Printf("Error in mac %v when getting related metadata: %v", mac, err.Error())
+		}
+
+		// Merge ssid probes
+		if len(v.SSIDProbes) > 0 {
+			meta.AddSSID(v.SSIDProbes...)
+			v.SSIDProbes = meta.SSIDProbes
+		}
+
+		// Set the ht capabilities
+		if v.HTCapabilities != nil {
+			meta.HTCapabilities = v.HTCapabilities
+		} else {
+			v.HTCapabilities = meta.HTCapabilities
+		}
+
+		// Set the extended ht capabilities
+		if v.HTExtendedCapabilities != nil {
+			meta.HTExtendedCapabilities = v.HTExtendedCapabilities
+		} else {
+			v.HTExtendedCapabilities = meta.HTExtendedCapabilities
+		}
+
+		// Set the supported rates
+		if len(v.SupportedRates) > 0 {
+			meta.SupportedRates = v.SupportedRates
+		} else {
+			v.SupportedRates = meta.SupportedRates
+		}
+
+		// Set the tags
+		if len(v.Tags) > 0 {
+			meta.Tags = v.Tags
+		} else {
+			v.Tags = meta.Tags
+		}
+
+		// Save the possible new values added to the metadata store
+		meta.UpdateInDB(mac)
+
+	}
+
+	// Return the digested macs
+	return digest
 
 }
 
@@ -668,7 +810,7 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &state)
 	if err != nil {
-		log.Println("Error when unmarshalling received body")
+		log.Println("Error when unmarshalling received body: " + err.Error())
 		w.WriteHeader(500)
 		return
 	}
@@ -678,7 +820,7 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate UUID
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		log.Print("Error generating UUID for inserting the detected macs! Skip this insertion.")
+		log.Print("Error generating UUID for inserting the detected macs! Skip this insertion: " + err.Error())
 		w.WriteHeader(500)
 		return
 	}
@@ -699,6 +841,19 @@ func DetectedMacsPostHandler(w http.ResponseWriter, r *http.Request) {
 		DetectedMacs:     string(detectedMacs),
 	})
 
+}
+
+func GetPersonalMacMetadata(mac string) (PersonalMacMetadata, error) {
+	var ret PersonalMacsDB
+	gormDB.Where("mac = ?", mac).Find(&ret)
+
+	var metadata PersonalMacMetadata
+	err := json.Unmarshal([]byte(ret.Metadata), &metadata)
+	if err != nil {
+		return PersonalMacMetadata{}, errors.New("An error ocurred retrieving personal mac metadata: " + err.Error())
+	}
+
+	return metadata, nil
 }
 
 func GetMacVendor(mac string) *string {
@@ -769,6 +924,32 @@ func (RoomHistoricDB) TableName() string {
 	return "room_historic"
 }
 
+type PersonalMacMetadata struct {
+	SSIDProbes             []string
+	HTCapabilities         *string
+	HTExtendedCapabilities *string
+	SupportedRates         []float64
+	Tags                   []int
+}
+
+func (p PersonalMacMetadata) UpdateInDB(mac string) {
+	var db PersonalMacsDB
+	gormDB.Where("mac = ?", mac).Find(&db)
+
+	meta, err := json.Marshal(p)
+	if err != nil {
+		log.Println("There was an error storing mac metadata: " + err.Error())
+		return // Ommit error
+	}
+
+	db.Metadata = string(meta)
+	gormDB.Save(&db)
+}
+
+func (p *PersonalMacMetadata) AddSSID(ssid ...string) {
+	p.SSIDProbes = DeduplicateSlice(append(p.SSIDProbes, ssid...))
+}
+
 type ReturnDigestedMacs struct {
 	NumberOfWindows   int                  `json:"number_of_windows"`
 	WindowsStartTimes []time.Time          `json:"windows_start_times"`
@@ -801,13 +982,19 @@ type ReturnRooms struct {
 	Rooms             map[string]int `json:"rooms"`
 }
 
+type ReturnHistoricRooms struct {
+	FirstTime time.Time                    `json:"start_time"`
+	LastTime  time.Time                    `json:"last_time"`
+	Rooms     map[string]map[time.Time]int `json:"rooms"`
+}
+
 type MacMetadata struct {
 	AverageSignalStrength  float64   `json:"average_signal_strength"`
 	DetectionCount         int       `json:"detection_count"`
 	TypeCount              [3]int    `json:"type_count"`
 	SSIDProbes             []string  `json:"ssid_probes"`
-	HTCapabilities         string    `json:"ht_capabilities"`
-	HTExtendedCapabilities string    `json:"ht_extended_capabilities"`
+	HTCapabilities         *string   `json:"ht_capabilities"`
+	HTExtendedCapabilities *string   `json:"ht_extended_capabilities"`
 	SupportedRates         []float64 `json:"supported_rates"`
 	Tags                   []int     `json:"tags"`
 }
@@ -822,7 +1009,8 @@ type PersonalMacsUpload struct {
 }
 
 type PersonalMacsDB struct {
-	Mac string `gorm:"primary_key" json:"mac"`
+	Mac      string `gorm:"primary_key" json:"mac"`
+	Metadata string
 }
 
 func (PersonalMacsDB) TableName() string {
@@ -844,10 +1032,10 @@ type MacDigest struct {
 	Manufacturer           *string   `json:"manufacturer"` // Manufacturer is nullable
 	OuiID                  *string   `json:"oui_id"`
 	TypeCount              [3]int    `json:"type_count"`
-	PresenceRecord         []bool    `json:"presence_record"`
+	PresenceRecord         []bool    `json:"presence_record"` // Last index in most recent
 	SSIDProbes             []string  `json:"ssid_probes"`
-	HTCapabilities         string    `json:"ht_capabilities"`
-	HTExtendedCapabilities string    `json:"ht_extended_capabilities"`
+	HTCapabilities         *string   `json:"ht_capabilities"`
+	HTExtendedCapabilities *string   `json:"ht_extended_capabilities"`
 	SupportedRates         []float64 `json:"supported_rates"`
 	Tags                   []int     `json:"tags"`
 }
@@ -912,7 +1100,9 @@ func GetStartEndTime() (time.Time, time.Time) {
 func GetLastTime() time.Time {
 
 	now := time.Now()
-	t := now.Truncate(60 * time.Second).Add(0 * time.Minute)
+	t := now.Truncate(60 * time.Second).Add(0 * time.Minute).Add(-1 * time.Minute)
+
+	fmt.Printf("Generated time: %v\n", t)
 
 	cet, err := time.LoadLocation("Europe/Madrid")
 	if err != nil {
