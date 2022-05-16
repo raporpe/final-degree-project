@@ -933,17 +933,16 @@ type PersonalMacMetadata struct {
 }
 
 func (p PersonalMacMetadata) UpdateInDB(mac string) {
-	var db PersonalMacsDB
-	gormDB.Where("mac = ?", mac).Find(&db)
-
+	// Convert metadata to string
 	meta, err := json.Marshal(p)
 	if err != nil {
 		log.Println("There was an error storing mac metadata: " + err.Error())
 		return // Ommit error
 	}
 
-	db.Metadata = string(meta)
-	gormDB.Save(&db)
+	var db PersonalMacsDB
+	gormDB.Where("mac = ?", mac).Find(&db).Update("metadata", string(meta))
+
 }
 
 func (p *PersonalMacMetadata) AddSSID(ssid ...string) {
