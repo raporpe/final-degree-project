@@ -92,7 +92,7 @@ func SliceToString[K int | float64 | int64](slice []K) string {
 	ret := ""
 
 	for _, v := range slice {
-		ret += fmt.Sprintf("%v", v)
+		ret += fmt.Sprintf("%v,", v)
 	}
 
 	return ret
