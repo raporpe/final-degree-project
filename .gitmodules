@@ -1,0 +1,3 @@
+[submodule "capture/include/SQLiteCpp"]
+	path = capture/include/SQLiteCpp
+	url = git@github.com:SRombauts/SQLiteCpp.git
