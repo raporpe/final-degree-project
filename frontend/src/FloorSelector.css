@@ -1,7 +1,9 @@
 .selector-main {
     filter: drop-shadow(5.06306px 5.06306px 20.2523px rgba(0, 0, 0, 0.25));
     margin: 10px;
-
+    position: fixed;
+    bottom: 0px;
+    right: 0px;
 }
 
 .selector-main div {
