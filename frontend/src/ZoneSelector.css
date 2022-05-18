@@ -1,0 +1,16 @@
+.zone-main {
+    position: fixed;
+    top: 0;
+    right: 0;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 15px;
+    background-color: white;
+    font-weight: bold;
+    text-align: center;
+    height: fit-content;
+    width: fit-content;
+    margin: 30px;
+    box-shadow: 10px 10px 50px rgb(163, 163, 163);
+    padding: 10px 30px;
+}

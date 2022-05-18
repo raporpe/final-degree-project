@@ -3,6 +3,7 @@ import FloorSelector from './FloorSelector';
 import React from 'react';
 import SidePanel from './SidePanel';
 import FloorMap from './FloorMap';
+import ZoneSelector from './ZoneSelector';
 
 let fixedFloors = new Map();
 fixedFloors.set(3, "Salas estudio")
@@ -35,6 +36,7 @@ class App extends React.Component {
         <SidePanel currentRoom={this.state.currentRoom} onRoomChange={this.handleRoomChange}></SidePanel>
         <FloorSelector currentFloor={this.state.currentFloor} floors={fixedFloors} onFloorChange={this.handleFloorChange}></FloorSelector>
         <FloorMap currentFloor={this.state.currentFloor}></FloorMap>
+        <ZoneSelector></ZoneSelector>
       </div>
     );
   }
