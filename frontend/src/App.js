@@ -1,18 +1,41 @@
 import './App.css';
 import FloorSelector from './FloorSelector';
 import React from 'react';
+import SidePanel from './SidePanel';
 
-const pre_floors = new Map()
-pre_floors.set(3, "Salas estudio")
-pre_floors.set(2, "Hemeroteca")
-pre_floors.set(1, "Biblioteca")
-pre_floors.set(0, "Planta baja")
-pre_floors.set(-1, "Sótano")
+const floors = new Map()
+floors.set(3, "Salas estudio")
+floors.set(2, "Hemeroteca")
+floors.set(1, "Biblioteca")
+floors.set(0, "Planta baja")
+floors.set(-1, "Sótano")
 
-function App() {
-  return (
-    <FloorSelector floors={pre_floors}></FloorSelector>
-  );
+class App extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {
+      currentFloor: 0,
+      currentRoom: null,
+    }
+  }
+
+  handleFloorChange = (newFloor) => {
+    this.setState({currentFloor: newFloor}) 
+  }
+
+  handleRoomChange = (newRoom) => {
+    this.setState({currentRoom: newRoom}) 
+  }
+
+  render() {
+    return (
+      <div>
+        <SidePanel currentRoom={this.state.currentRoom} onRoomChange={this.handleRoomChange}></SidePanel>
+        <FloorSelector currentFloor={this.state.currentFloor} floors={floors} onFloorChange={this.handleFloorChange}></FloorSelector>
+      </div>
+    );
+  }
+
 }
 
 export default App;

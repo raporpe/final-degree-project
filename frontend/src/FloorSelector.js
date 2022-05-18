@@ -8,12 +8,6 @@ pre_floors.set(1, "Biblioteca")
 pre_floors.set(0, "Planta baja")
 pre_floors.set(-1, "Sótano")
 
-function App() {
-  return (
-    <FloorSelector floors={pre_floors}></FloorSelector>
-  );
-}
-
 let maxKey = (m) => {
   let max = -Infinity
   m.forEach((v, k) => {
@@ -38,7 +32,6 @@ class FloorSelector extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      currentFloor: 0,
       floors: props.floors,
       topFloor: maxKey(props.floors),
       bottomFloor: minKey(props.floors),
@@ -47,10 +40,10 @@ class FloorSelector extends React.Component {
 
   render() {
     let elements = []
-    this.state.floors.forEach((v, k) => {
+    this.props.floors.forEach((v, k) => {
       let styles = ["selector"]
 
-      if (k === this.state.currentFloor) {
+      if (k === this.props.currentFloor) {
         styles.push("selector-active")
       } else {
         styles.push("selector-inactive")
@@ -64,7 +57,7 @@ class FloorSelector extends React.Component {
         styles.push("selector-bottom")
       }
 
-      elements.push(<div className={styles.join(" ")} onClick={() => this.setState({ currentFloor: k })}>{k+" "+v}</div>)
+      elements.push(<div className={styles.join(" ")} onClick={() => this.props.onFloorChange(k)}>{k+" "+v}</div>)
     })
 
     return (
