@@ -2,13 +2,14 @@ import './App.css';
 import FloorSelector from './FloorSelector';
 import React from 'react';
 import SidePanel from './SidePanel';
+import FloorMap from './FloorMap';
 
-const floors = new Map()
-floors.set(3, "Salas estudio")
-floors.set(2, "Hemeroteca")
-floors.set(1, "Biblioteca")
-floors.set(0, "Planta baja")
-floors.set(-1, "Sótano")
+let fixedFloors = new Map();
+fixedFloors.set(3, "Salas estudio")
+fixedFloors.set(2, "Hemeroteca")
+fixedFloors.set(1, "Biblioteca")
+fixedFloors.set(0, "Planta baja")
+fixedFloors.set(-1, "Sótano")
 
 class App extends React.Component {
   constructor(props) {
@@ -20,7 +21,8 @@ class App extends React.Component {
   }
 
   handleFloorChange = (newFloor) => {
-    this.setState({currentFloor: newFloor}) 
+    this.setState({currentFloor: newFloor})
+    // this.setState({currentRoom: null}) TODO: implementar cuando tengamos el selector de room
   }
 
   handleRoomChange = (newRoom) => {
@@ -31,7 +33,8 @@ class App extends React.Component {
     return (
       <div>
         <SidePanel currentRoom={this.state.currentRoom} onRoomChange={this.handleRoomChange}></SidePanel>
-        <FloorSelector currentFloor={this.state.currentFloor} floors={floors} onFloorChange={this.handleFloorChange}></FloorSelector>
+        <FloorSelector currentFloor={this.state.currentFloor} floors={fixedFloors} onFloorChange={this.handleFloorChange}></FloorSelector>
+        <FloorMap currentFloor={this.state.currentFloor}></FloorMap>
       </div>
     );
   }
