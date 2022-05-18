@@ -11,19 +11,20 @@
     width: 400px;
 }
 
-.sidebar-content {
-    margin: 10px 15px;
-    padding: 20px;
-    text-align: left;
-}
 
 .sidebar-image {
     width: 100%;
     margin: 0px;
     border-radius: 15px 15px 0px 0px;
     overflow: hidden;
-
+    
 }
+.sidebar-content {
+    margin: 10px 15px;
+    padding: 20px;
+    text-align: left;
+}
+
 .sidebar-title {
     font-size: 30px;
     font-weight: bold;
@@ -33,9 +34,8 @@
     margin-top: 20px;
     font-size: 20px;
     font-style: italic;
-
 }
 
-.sidebar-graph {
-
+.sidebar-chart {
+    margin-top: 20px;
 }
