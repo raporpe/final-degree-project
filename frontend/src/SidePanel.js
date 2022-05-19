@@ -9,18 +9,30 @@ class SidePanel extends React.Component {
     //}
 
     render() {
-        return (
-            <div className="sidebar">
-                <img className="sidebar-image" alt="biblioteca uc3m" src="/biblioteca.webp"></img>
-                <div className="sidebar-content">
-                    <div className="sidebar-title">Sala de estudio</div>
-                    <div className="sidebar-ocupacion">70% de ocupacion</div>
-                    <div className="sidebar-chart">
-                        <Chart room={this.props.currentRoom}></Chart>
+        if (this.props.currentRoom === null) {
+            return (
+                <div className="sidebar">
+                    <img className="sidebar-image" alt="biblioteca uc3m" src="/placeholder.png"></img>
+                    <div className="sidebar-content">
+                        <div className="sidebar-nodata">Selecciona una sala en el mapa</div>
                     </div>
                 </div>
-            </div>
-        )
+            )
+        } else {
+            return (
+                <div className="sidebar">
+                    <img className="sidebar-image" alt="biblioteca uc3m" src="/room.png"></img>
+                    <div className="sidebar-content">
+                        <div className="sidebar-title">{this.props.currentRoom}</div>
+                        <div className="sidebar-ocupacion">70% de ocupacion</div>
+                        <div className="sidebar-chart">
+                            <Chart room={this.props.currentRoom}></Chart>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
     }
 }
 

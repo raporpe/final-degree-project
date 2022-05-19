@@ -38,3 +38,11 @@
 .sidebar-chart {
     margin-top: 20px;
 }
+
+.sidebar-nodata {
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    font-style: italic;
+}

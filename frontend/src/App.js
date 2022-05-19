@@ -23,7 +23,7 @@ class App extends React.Component {
 
   handleFloorChange = (newFloor) => {
     this.setState({currentFloor: newFloor})
-    // this.setState({currentRoom: null}) TODO: implementar cuando tengamos el selector de room
+    this.setState({currentRoom: null})
   }
 
   handleRoomChange = (newRoom) => {
@@ -33,9 +33,9 @@ class App extends React.Component {
   render() {
     return (
       <div>
-        <SidePanel currentRoom={this.state.currentRoom} onRoomChange={this.handleRoomChange}></SidePanel>
+        <SidePanel currentRoom={this.state.currentRoom} ></SidePanel>
         <FloorSelector currentFloor={this.state.currentFloor} floors={fixedFloors} onFloorChange={this.handleFloorChange}></FloorSelector>
-        <FloorMap currentFloor={this.state.currentFloor}></FloorMap>
+        <FloorMap currentFloor={this.state.currentFloor} onRoomChange={this.handleRoomChange}></FloorMap>
         <ZoneSelector></ZoneSelector>
       </div>
     );
