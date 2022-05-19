@@ -51,7 +51,7 @@ func main() {
 	r.HandleFunc("/v1/digested-macs", DigestedMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/clustered-macs", GetClusteredMacsHandler).Methods("GET")
 	r.HandleFunc("/v1/last-room", GetLastRoomHandler).Methods("GET")
-	r.HandleFunc("/v1/room", GetRoomHandler).Methods("GET")
+	r.HandleFunc("/v1/historic", GetHistoricHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
 
 	serverPort := os.Getenv("API_PORT")
@@ -160,7 +160,7 @@ func GetLastRoomHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonResponse))
 }
 
-func GetRoomHandler(w http.ResponseWriter, r *http.Request) {
+func GetHistoricHandler(w http.ResponseWriter, r *http.Request) {
 
 	fromTimeSet := r.URL.Query().Get("from_time") != ""
 	toTimeSet := r.URL.Query().Get("to_time") != ""
