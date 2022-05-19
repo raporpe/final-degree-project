@@ -235,7 +235,13 @@ func PeriodicRoomJob() {
 	// Infinite loop
 	for {
 		log.Println("Storing room data...")
-		StoreRoomInDB(GetRooms(GetLastTime()))
+		r := GetRooms(GetLastTime())
+
+		for k, v := range r.Rooms {
+			log.Printf("%v: %v", k, v)
+		}
+
+		StoreRoomInDB(r)
 
 		sleepTime := 60 - time.Now().Second() + 30 // Extra 30 seconds to have half a minute extra
 		time.Sleep(time.Duration(sleepTime) * time.Second)
@@ -545,11 +551,11 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 				// The first time that matches
 				if !matchInDB {
 					matchInDB = true
-					log.Printf("Correct match! %v\n", checkingTime)
+					//log.Printf("Correct match! %v\n", checkingTime)
 				} else {
 					// If it had already matched
 					multipleMatchInDB = true
-					log.Printf("Double match! %v\n", checkingTime)
+					//log.Printf("Double match! %v\n", checkingTime)
 				}
 			}
 		}
