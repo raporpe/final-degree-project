@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import './Chart.css'
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";

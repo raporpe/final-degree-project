@@ -39,7 +39,7 @@
 
 
 
-@media (min-width: 851px) {
+@media (min-width: 1151px) {
   .section{
     display:flex;
     margin:40px;
@@ -47,7 +47,7 @@
   }
   }
 
-@media (max-width: 850px) {
+@media (max-width: 1150px) {
   .section{
     margin:5px;
     margin:auto;

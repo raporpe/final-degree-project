@@ -36,7 +36,7 @@ class SidePanel extends React.Component {
                 console.log(json);
 
                 Object.entries(json.rooms).forEach(room => {
-                    let compressed = new Object()
+                    let compressed = {}
 
                     for (let i = 0; i < 24; i++) {
                         compressed[i] = 0;

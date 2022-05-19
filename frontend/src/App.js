@@ -4,7 +4,6 @@ import React from 'react';
 import SidePanel from './SidePanel';
 import FloorMap from './FloorMap';
 import ZoneSelector from './ZoneSelector';
-import Chart from './Chart'
 import './App.css'
 
 let fixedFloors = new Map();

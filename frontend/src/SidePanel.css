@@ -10,15 +10,31 @@ box-shadow: 10px 10px 50px rgb(200, 200, 200);
     overflow: hidden;
     transition-duration: 1s;
 */
-.sidebar {
-    box-shadow: 10px 10px 50px rgb(200, 200, 200);
-    border-radius: 15px 15px 5px 5px;
-    height: fit-content;
-    width: 400px;
-    margin: 0px 40px 0px 0px;
-    overflow: hidden;
-    transition-duration: 1s;
-}
+
+
+@media (min-width: 1151px) {
+    .sidebar {
+        box-shadow: 10px 10px 50px rgb(200, 200, 200);
+        border-radius: 15px 15px 5px 5px;
+        height: fit-content;
+        width: 400px;
+        margin: 0px 40px 0px 0px;
+        overflow: hidden;
+        transition-duration: 1s;
+    }
+    }
+
+@media (max-width: 1150px) {
+    .sidebar{
+      margin: 0px 0px 0px 0px;
+      box-shadow: 10px 10px 50px rgb(200, 200, 200);
+      border-radius: 15px 15px 5px 5px;
+      height: fit-content;
+      width: 400px;
+      overflow: hidden;
+      transition-duration: 1s;
+    }
+    }
 
 .sidebar-image {
     width: 100%;
