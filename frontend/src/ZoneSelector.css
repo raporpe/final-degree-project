@@ -9,8 +9,9 @@
     height: fit-content;
     width: fit-content;
     margin: 30px;
-    box-shadow: 10px 10px 50px rgb(163, 163, 163);
+    box-shadow: 5px 5px 20px rgb(205, 205, 205);
     padding: 10px 30px;
+    cursor: pointer;
 }
 
 .zone {

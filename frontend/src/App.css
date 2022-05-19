@@ -36,3 +36,21 @@
     transform: rotate(360deg);
   }
 }
+
+
+
+@media (min-width: 851px) {
+  .section{
+    display:flex;
+    margin:40px;
+
+  }
+  }
+
+@media (max-width: 850px) {
+  .section{
+    margin:5px;
+    margin:auto;
+    width: 600px;
+  }
+  }

@@ -1,14 +1,21 @@
-.sidebar {
-    box-shadow: 10px 10px 50px rgb(163, 163, 163);
-    border-width: 2px;
-    border-style: solid;
-    border-radius: 15px;
+/*
+box-shadow: 10px 10px 50px rgb(200, 200, 200);
     margin: 40px;
     position: fixed;
+    border-radius: 15px 15px 5px 5px;
     top: 0;
     left: 0;
     height: fit-content;
     width: 400px;
+    overflow: hidden;
+    transition-duration: 1s;
+*/
+.sidebar {
+    box-shadow: 10px 10px 50px rgb(200, 200, 200);
+    border-radius: 15px 15px 5px 5px;
+    height: fit-content;
+    width: 400px;
+    margin: 0px 40px 0px 0px;
     overflow: hidden;
     transition-duration: 1s;
 }

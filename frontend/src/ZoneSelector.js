@@ -27,8 +27,8 @@ class ZoneSelector extends React.Component {
         return (
             <div>
 
-                <nav className="zone zone-main">
-                    <div onClick={() => this.toggleDropdown()}>
+                <nav className="zone zone-main" onClick={() => this.toggleDropdown()}>
+                    <div>
                         <div>
                             {this.props.currentZone} <i className="fa-solid fa-caret-down"></i>
                         </div>

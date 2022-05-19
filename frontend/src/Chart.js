@@ -3,11 +3,6 @@ import './Chart.css'
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import letterFrequency, {
-    LetterFrequency
-} from "@visx/mock-data/lib/mocks/letterFrequency";
-
-const data = letterFrequency.slice(10);
 
 
 class Chart extends React.Component {
@@ -24,7 +19,7 @@ class Chart extends React.Component {
         let xScale = scaleBand({
             range: [0, xMax],
             round: true,
-            domain: data.map((d) => d.letter),
+            domain: Object.entries(this.props.data).map((d) => d[0]),
             padding: 0.1
         });
 
@@ -32,23 +27,24 @@ class Chart extends React.Component {
         let yScale = scaleLinear({
             range: [yMax, 0],
             round: true,
-            domain: [0, Math.max(...data.map((d) => d.frequency * 100))]
+            domain: [0, Math.max(...Object.entries(this.props.data).map((d) => d[1] * 100))]
         });
 
         return (
             <svg width={width} height={height}>
                 <rect width={width} height={height} fill="url(#blue)" rx={14} />
                 <Group top={verticalMargin / 2}>
-                    {data.map((d) => {
+                    {Object.entries(this.props.data).map((d) => {
+                        const date = d[0]
+                        const value = d[1]
                         const barWidth = xScale.bandwidth();
-                        const barHeight = yMax - (yScale(d.frequency * 100) ?? 0);
-                        const barX = xScale(d.letter);
+                        const barHeight = yMax - (yScale(value * 100) ?? 0);
+                        const barX = xScale(date);
                         const barY = yMax - barHeight;
                         const color = "rgba(80, 171, 255, 1)"
-                        console.log("ym" + yMax);
                         return (
                             <Bar
-                                key={`bar-${d.letter}`}
+                                key={`bar-${date}`}
                                 x={barX}
                                 y={barY}
                                 rx={6}
