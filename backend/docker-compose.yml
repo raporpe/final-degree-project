@@ -5,7 +5,7 @@ services:
     volumes:
     - ./nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
-    - "8080:80"
+    - "80:80"
     environment:
     - NGINX_PORT=80
     depends_on:
@@ -22,10 +22,10 @@ services:
     - "optics"
     restart: "unless-stopped"
 
-  optics:
-    build: ./optics
-    volumes:
-    - "./optics:/app"
-    ports:
-    - "9000:80"
-    restart: "unless-stopped"
+  #optics:
+  #  build: ./optics
+  #  volumes:
+  #  - "./optics:/app"
+  #  ports:
+  #  - "9000:80"
+  #  restart: "unless-stopped"
