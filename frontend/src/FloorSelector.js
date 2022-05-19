@@ -57,7 +57,7 @@ class FloorSelector extends React.Component {
         styles.push("selector-bottom")
       }
 
-      elements.push(<div className={styles.join(" ")} onClick={() => this.props.onFloorChange(k)}>{k+" "+v}</div>)
+      elements.push(<div className={styles.join(" ")} onClick={() => this.props.onFloorChange(k)} key={k}>{k+" "+v}</div>)
     })
 
     return (

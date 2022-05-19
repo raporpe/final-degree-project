@@ -1,13 +1,18 @@
 import React from "react";
 import "./FloorMap.css";
-
+import {Section} from "./FloorMapStyled.js";
 
 class FloorMap extends React.Component {
+
+    handleColor(){
+        return;
+    }
+
     rooms = {
         3: ["Sala A", "Sala B"],
         2: ["Estudio A", "Estudio B"],
         1: ["Biblioteca A", "Biblioteca B", "Estudio 3"],
-        0: ["Sala de trabajo", "Makerspace", "Sala silenciosa"],
+        0: ["Entrada", "Baños", "Makerspace", "Colaboración"],
         [-1]: ["Clases A", "Clases B", "Sala de presentaciones"],
     }
 

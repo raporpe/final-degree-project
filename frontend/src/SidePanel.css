@@ -5,10 +5,12 @@
     border-radius: 15px;
     margin: 40px;
     position: fixed;
-    bottom: 0;
     top: 0;
     left: 0;
+    height: fit-content;
     width: 400px;
+    overflow: hidden;
+    transition-duration: 1s;
 }
 
 .sidebar-image {
@@ -27,6 +29,7 @@
 .sidebar-title {
     font-size: 30px;
     font-weight: bold;
+    width: 100%;
 }
 
 .sidebar-ocupacion {

@@ -26,7 +26,7 @@ class SidePanel extends React.Component {
                         <div className="sidebar-title">{this.props.currentRoom}</div>
                         <div className="sidebar-ocupacion">70% de ocupacion</div>
                         <div className="sidebar-chart">
-                            <Chart room={this.props.currentRoom}></Chart>
+                            <Chart room={this.props.currentRoom} width={325} height={125}></Chart>
                         </div>
                     </div>
                 </div>

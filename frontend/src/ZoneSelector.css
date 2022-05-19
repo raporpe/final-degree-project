@@ -1,7 +1,5 @@
 .zone-main {
-    position: fixed;
-    top: 0;
-    right: 0;
+
     border-width: 2px;
     border-style: solid;
     border-radius: 15px;
@@ -15,7 +13,13 @@
     padding: 10px 30px;
 }
 
+.zone {
+    position: fixed;
+    top: 0;
+    right: 0;
+}
+
 
 .zone-dropdown {
-    position: relative;
+    margin: 30px;
 }

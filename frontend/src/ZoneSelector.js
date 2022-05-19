@@ -11,7 +11,6 @@ class ZoneSelector extends React.Component {
 
 
     toggleDropdown() {
-        console.log("asdfs");
         this.setState({ dropdown: !this.state.dropdown });
     }
 
@@ -20,20 +19,23 @@ class ZoneSelector extends React.Component {
 
         if (this.state.dropdown) {
             drop =
-                <div className="zone-dropdown">
+                <div className="zone zone-dropdown">
                     sdfasf
                 </div>
         }
 
         return (
-            <div className="zone-main">
-                <div onClick={() => this.toggleDropdown()}>
-                    <div>
-                        Leganés <i className="fa-solid fa-caret-down"></i>
-                    </div>
-                </div>
-                {drop}
+            <div>
 
+                <nav className="zone zone-main">
+                    <div onClick={() => this.toggleDropdown()}>
+                        <div>
+                            {this.props.currentZone} <i className="fa-solid fa-caret-down"></i>
+                        </div>
+                    </div>
+
+                {drop}
+                </nav>
             </div>
         )
     }
