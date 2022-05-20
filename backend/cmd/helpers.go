@@ -119,16 +119,11 @@ func IsDeviceActive(presenceRecord []bool) bool {
 // Merge cluster c2 into cluster c1
 func ClusterMerge(c1 [][]string, c2 [][]string, shareThreshold float64) [][]string {
 
-	// The merge slice will be returned
-	merge := make([][]string, 0)
-	// Copy the slice c1 into the merge slice
-	copy(merge, c1)
-
 	// Index the cluster c1 for faster search
 	index := make(map[string]int)
-	for clusterID, macs := range c1 {
+	for c1ClusterID, macs := range c1 {
 		for _, mac := range macs {
-			index[mac] = clusterID
+			index[mac] = c1ClusterID
 		}
 	}
 
@@ -138,27 +133,28 @@ func ClusterMerge(c1 [][]string, c2 [][]string, shareThreshold float64) [][]stri
 		for _, mac := range c2Cluster {
 			// If the mac in c2 is present on c1
 			// and the current c2 cluster has not already been merged
-			if c1ClusterID, exists := index[mac]; exists && !mergeFlag {
-				// Analyze c1 cluster and compare with current one (in c2)
+			c1ClusterID, exists := index[mac]
+			if exists && !mergeFlag {
+				// Analyze merge cluster and compare with current one (in c2)
 				cluster1 := c1[c1ClusterID]
 				cluster2 := c2[c2ClusterID]
 				duplicates := GetNumberOfDuplicates(cluster1, cluster2)
 				// Check if duplicates superate threshold
-				if float64(duplicates/min(len(cluster1), len(cluster2))) > shareThreshold {
+				if float64(duplicates)/float64(min(len(cluster1), len(cluster2))) > shareThreshold {
 					// The cluster c2 is merged into c1
 					c1[c1ClusterID] = DeduplicateSlice(append(c1[c1ClusterID], c2[c2ClusterID]...))
 					mergeFlag = true
 				}
 			}
 		}
-		// If in this cluster there was not any merge,
-		// add it as another one
+		// If for this cluster in c2 there was not any merge,
+		// append it to merge
 		if !mergeFlag {
 			c1 = append(c1, c2Cluster)
 		}
 	}
 
-	return merge
+	return c1
 }
 
 func min[T constraints.Ordered](a T, b T) T {

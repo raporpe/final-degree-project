@@ -335,10 +335,10 @@ func GetRooms(lastTime time.Time) ReturnRooms {
 	var allRooms []RoomsDB
 	gormDB.Find(&allRooms)
 
-	// Results: room (string) -> ocupation (int)
+	// Format of the results: room (string) -> ocupation (int)
 	rooms := make(map[string]int)
 
-	// Bool for storing the rooms that are inconsistent
+	// String slice for storing the rooms that are inconsistent
 	inconsistentRooms := []string{}
 
 	for _, v := range allRooms {
@@ -348,6 +348,8 @@ func GetRooms(lastTime time.Time) ReturnRooms {
 		if err != nil {
 			fmt.Printf("There was an error getting room %v: %v", v.RoomID, err.Error())
 		}
+
+		fmt.Printf("DEBUG: clusteredMacs: %v", clusteredMacs.Results)
 
 		// Check if the room has any inconsistent data
 		if clusteredMacs.InconsistentData {
