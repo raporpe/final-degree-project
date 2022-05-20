@@ -1,3 +1,6 @@
 [submodule "capture/include/SQLiteCpp"]
 	path = capture/include/SQLiteCpp
 	url = https://github.com/SRombauts/SQLiteCpp.git
+[submodule "capture/include/libtins"]
+	path = capture/include/libtins
+	url = https://github.com/mfontanini/libtins.git

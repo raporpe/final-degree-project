@@ -8,6 +8,7 @@ include_directories(scanner "include")
 
 # Add the sqlite wrapper
 add_subdirectory("include/SQLiteCpp")
+add_subdirectory("include/libtins")
 add_subdirectory("include/fmt")
 
 # add the executable
