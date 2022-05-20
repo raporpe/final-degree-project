@@ -24,7 +24,7 @@ using namespace Tins;
 using namespace std;
 using json = nlohmann::json;
 
-const string HOSTNAME = "http://tfg-api.raporpe.dev:8080";
+const string HOSTNAME = "https://tfg-api.raporpe.dev";
 bool debugMode;
 
 void PacketManager::uploadToBackend()
@@ -94,9 +94,6 @@ void PacketManager::uploadToBackend()
         string storedJSON = query.getColumn(1).getText();
         // Try to send to backend
         bool correctPost = true;
-        cout << "aaaaaaaaaaaaa" << endl
-             << storedJSON << endl
-             << "aaaaaaaaaa" << endl;
         try
         {
             postJSON(url, json::parse(storedJSON));
@@ -112,7 +109,7 @@ void PacketManager::uploadToBackend()
             this->db->exec("DELETE FROM WINDOWS WHERE ID = '" + to_string(id) + "'");
         }
 
-        cout << "Trying to restore json with id " << id << endl;
+        cout << "Trying to upload stored json with id " << id << "..." << endl;
     }
 }
 
