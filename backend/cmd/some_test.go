@@ -38,8 +38,8 @@ func TestClusterMerge(t *testing.T) {
 
 	want := [][]string{
 		{
-			"AAB", // Match
-			"AAD", // Match
+			"AAB", // Match result
+			"AAD", // Match result
 			"AAC",
 			"AAZ",
 		},
@@ -59,11 +59,3 @@ func TestClusterMerge(t *testing.T) {
 	}
 }
 
-//// TestHelloEmpty calls greetings.Hello with an empty string,
-//// checking for an error.
-//func TestHelloEmpty(t *testing.T) {
-//	msg, err := Hello("")
-//	if msg != "" || err == nil {
-//		t.Fatalf(`Hello("") = %q, %v, want "", error`, msg, err)
-//	}
-//}
