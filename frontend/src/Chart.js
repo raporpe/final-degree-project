@@ -16,6 +16,12 @@ class Chart extends React.Component {
         let xMax = width;
         let yMax = height - verticalMargin;
 
+        if (this.props.data === undefined) {
+            return(
+                <div className='chart-error'>No se han podido cargar los datos</div>
+            )
+        }
+
         let xScale = scaleBand({
             range: [0, xMax],
             round: true,
