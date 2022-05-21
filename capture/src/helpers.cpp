@@ -19,17 +19,20 @@ int getCurrentTime() {
         .count();
 }
 
-mac getStationMAC(Tins::Dot11Data *frame) {
+mac getStationMAC(Tins::Dot11Data* frame) {
     bool from = frame->from_ds();
     bool to = frame->to_ds();
 
     if (!to && !from) {
         return frame->addr2();
-    } else if (!to && from) {
+    }
+    else if (!to && from) {
         return frame->addr1();
-    } else if (to && !from) {
+    }
+    else if (to && !from) {
         return frame->addr2();
-    } else {
+    }
+    else {
         return mac(nullptr);
     }
 }
@@ -45,7 +48,7 @@ json postJSON(string url, json j) {
     auto curl = curl_easy_init();
 
     string jsonString = j.dump(-1, ' ', false, json::error_handler_t::ignore);
-    if (debugMode) cout << jsonString << endl;
+    //if (debugMode) cout << jsonString << endl;
 
     string response;
 
@@ -61,8 +64,13 @@ json postJSON(string url, json j) {
         CURLcode res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
+            long http_code = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+            
             fprintf(stderr, "curl_easy_perform() failed: %s\n",
                     curl_easy_strerror(res));
+            if (debugMode) cout << response << endl;
+            if (debugMode) cout << "http error code" << http_code << endl;
             throw UnavailableBackendException();
         }
 
@@ -72,10 +80,10 @@ json postJSON(string url, json j) {
     return json::object();
 }
 
-size_t curlWriteCallback(void *contents, size_t size, size_t nmemb,
-                         std::string *s) {
+size_t curlWriteCallback(void* contents, size_t size, size_t nmemb,
+                         std::string* s) {
     size_t newLength = size * nmemb;
-    s->append((char *)contents, newLength);
+    s->append((char*)contents, newLength);
 
     return newLength;
 }
@@ -92,8 +100,13 @@ json getJSON(string url) {
 
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
+            long http_code = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
             fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                          curl_easy_strerror(res));
+                    curl_easy_strerror(res));
+            if (debugMode) cout << response << endl;
+            if (debugMode) cout << "http error code" << http_code << endl;
             throw UnavailableBackendException();
         }
         curl_easy_cleanup(curl);
@@ -103,7 +116,7 @@ json getJSON(string url) {
 }
 
 void channel_switcher(string interface) {
-    const vector<int> channels = {1, 6, 11, 2, 7, 12, 3, 9, 13, 4, 10, 5, 8};
+    const vector<int> channels = { 1, 6, 11, 2, 7, 12, 3, 9, 13, 4, 10, 5, 8 };
 
     // Switch channels for ever
     while (true) {
