@@ -3,6 +3,7 @@ import './Chart.css'
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
+import { AxisBottom, AxisTop } from "@visx/axis";
 
 
 class Chart extends React.Component {
@@ -11,10 +12,16 @@ class Chart extends React.Component {
     render() {
         let width = this.props.width;
         let height = this.props.height;
-        let verticalMargin = 20;
+        let verticalMargin = 40;
 
         let xMax = width;
         let yMax = height - verticalMargin;
+
+        if (this.props.data === undefined) {
+            return (
+                <div className='chart-error'>No se han podido cargar los datos</div>
+            )
+        }
 
         let xScale = scaleBand({
             range: [0, xMax],
@@ -41,7 +48,7 @@ class Chart extends React.Component {
                         const barHeight = yMax - (yScale(value * 100) ?? 0);
                         const barX = xScale(date);
                         const barY = yMax - barHeight;
-                        const color = "rgba(80, 171, 255, 1)"
+                        const color = Number(date) === new Date().getHours() - 2 ?  "rgba(153, 51, 255, 0.8)" : "rgba(80, 171, 255, 1)"
                         return (
                             <Bar
                                 key={`bar-${date}`}
@@ -54,6 +61,34 @@ class Chart extends React.Component {
                             />
                         );
                     })}
+                    <AxisBottom
+                        numTicks={8}
+                        top={yMax}
+                        scale={xScale}
+                        hideTicks={true}
+                        hideZero={true}
+                        stroke={'#ffffff'}
+                        strokeWidth={0}
+                        tickFormat={(t) => String(t) + "h"}
+                        tickLabelProps={() => ({
+                            fill: '#000000',
+                            fontSize: 12,
+                            textAnchor: 'middle',
+                        })}
+                    />
+                    <AxisTop
+                        numTicks={0}
+                        top={-5}
+                        scale={xScale}
+                        hideTicks={true}
+                        hideZero={true}
+                        strokeDasharray={6}
+                        tickLabelProps={() => ({
+                            fill: '#ffeb3b',
+                            fontSize: 12,
+                            textAnchor: 'middle',
+                        })}
+                    />
                 </Group>
             </svg>
         );
