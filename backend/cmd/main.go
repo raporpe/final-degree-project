@@ -542,6 +542,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 	inconsistentData := false
 	inconsistentTimes := make([]time.Time, 0)
 
+	
 	for _, checkingTime := range expectedStartTimes {
 		matchInDB := false
 		multipleMatchInDB := false
@@ -565,7 +566,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 		if !matchInDB || multipleMatchInDB {
 			inconsistentData = true
 			inconsistentTimes = append(inconsistentTimes, checkingTime)
-			log.Printf("There is an inconsistency for date %v, match:%v, multipleMatch:%v\n", checkingTime, matchInDB, multipleMatchInDB)
+			log.Printf("There is an inconsistency for date %v, device %v, noMatchInDB:%v, multipleMatchInDB:%v\n", checkingTime, deviceID, !matchInDB, multipleMatchInDB)
 		}
 
 	}
