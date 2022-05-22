@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import datetime as dt
 import requests
+import time
 
 # Get the data from the api
 p1 = {
@@ -14,7 +15,7 @@ p2 = {
     "to_time": dt.datetime.now().isoformat() + "Z"
 }
 
-resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=p2)
+resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=p1)
 
 
 rooms = resp.json()["rooms"]
@@ -30,3 +31,4 @@ print(series[0])
 for s in series:
     fig = px.line(s[0], x='hora', y="ocupacion", title=s[1])
     fig.show()
+    time.sleep(5)
