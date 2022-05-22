@@ -78,7 +78,7 @@ void PacketManager::uploadToBackend()
                 // Save the json in sqlite for sending it later
                 cout << "Storing u in local DB!" << endl;
                 SQLite::Statement query(*this->db, "INSERT INTO WINDOWS (json) VALUES ( ? );");
-                query.bind(1, j.dump());
+                query.bind(1, j.dump(-1, ' ', false, json::error_handler_t::ignore));
                 while (query.executeStep())
                 {
                     cout << "step" << endl;
