@@ -542,7 +542,6 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 	inconsistentData := false
 	inconsistentTimes := make([]time.Time, 0)
 
-	
 	for _, checkingTime := range expectedStartTimes {
 		matchInDB := false
 		multipleMatchInDB := false
@@ -856,11 +855,15 @@ func GetPersonalMacMetadata(mac string) (PersonalMacMetadata, error) {
 	var ret PersonalMacsDB
 	gormDB.Where("mac = ?", mac).Find(&ret)
 
-	var metadata PersonalMacMetadata
-	err := json.Unmarshal([]byte(ret.Metadata), &metadata)
-	if err != nil {
-		return PersonalMacMetadata{}, errors.New("An error ocurred retrieving personal mac metadata: " + err.Error())
+	// Fix bug: ret.Metadata could be empty string
+	metadata := PersonalMacMetadata{}
+	if ret.Metadata != "" {
+		err := json.Unmarshal([]byte(ret.Metadata), &metadata)
+		if err != nil {
+			return PersonalMacMetadata{}, errors.New(fmt.Sprintf("An error ocurred retrieving personal mac metadata: %v for the following metadata: '%v'", err.Error(), ret.Metadata))
+		}
 	}
+
 
 	return metadata, nil
 }
@@ -950,6 +953,9 @@ func (p PersonalMacMetadata) UpdateInDB(mac string) {
 	}
 
 	var db PersonalMacsDB
+	if string(meta) == "" {
+		log.Printf("EMPTY METADATA STORAGE!!! FOR MAC %v", mac)
+	}
 	gormDB.Where("mac = ?", mac).Find(&db).Update("metadata", string(meta))
 
 }
