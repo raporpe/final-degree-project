@@ -41,7 +41,9 @@ func DeduplicateSlice[K comparable](slice []K) []K {
 	return ret
 }
 
-func SimilarDetector(m []MacDigest) [][]string {
+// Performs the clustering of the mac addresses
+// It only takes into account the tags
+func Clustering(m []MacDigest) [][]string {
 
 	// Index the MacDigests by their tags
 	macIndexByTags := make(map[string][]MacDigest)
@@ -63,21 +65,25 @@ func SimilarDetector(m []MacDigest) [][]string {
 
 	// Now traverse the map and analyse those clusters
 	// that have more than one value
-	for _, v := range macIndexByTags {
-		if len(v) > 1 {
-			fmt.Printf("Found %v!", len(v))
-			for k, v := range v {
-				fmt.Printf("%v -> %v", k, v.Mac)
+	for _, cluster := range macIndexByTags {
+		// If the cluster has more than one mac address
+		if len(cluster) > 1 {
+			fmt.Printf("Found a cluster with %v mac addresses! ", len(cluster))
+			for _, macDigest := range cluster {
+				fmt.Printf("%v,", macDigest)
 			}
+			fmt.Println()
 		}
 	}
 
 	// Transform the map into the final returned type
+	// From MacDigest to clusters of strings
+	// These strings are mac addresses
 	var ret [][]string
-	for _, v := range macIndexByTags {
+	for _, cluster := range macIndexByTags {
 
 		inner := make([]string, 0)
-		for _, vv := range v {
+		for _, vv := range cluster {
 			inner = append(inner, vv.Mac)
 		}
 
