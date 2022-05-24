@@ -74,13 +74,18 @@ void PacketManager::uploadToBackend()
         }
         catch (UnavailableBackendException &e)
         {
-            // Save the json in sqlite for sending it later
-            cout << "Inserting json in DB!" << endl;
-            SQLite::Statement query(*this->db, "INSERT INTO WINDOWS (json) VALUES ( ? );");
-            query.bind(1, j.dump());
-            while (query.executeStep())
-            {
-                cout << "step" << endl;
+            try {
+                // Save the json in sqlite for sending it later
+                cout << "Storing u in local DB!" << endl;
+                SQLite::Statement query(*this->db, "INSERT INTO WINDOWS (json) VALUES ( ? );");
+                query.bind(1, j.dump(-1, ' ', false, json::error_handler_t::ignore));
+                while (query.executeStep())
+                {
+                    cout << "step" << endl;
+                }
+
+            } catch (SQLite::Exception &e) {
+                cout << "FATAL: There was an error storing json in local DB!" << endl;
             }
         }
     }
