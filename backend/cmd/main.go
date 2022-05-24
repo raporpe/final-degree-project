@@ -53,6 +53,7 @@ func main() {
 	r.HandleFunc("/v1/last-room", GetLastRoomHandler).Methods("GET")
 	r.HandleFunc("/v1/historic", GetHistoricHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
+	r.HandleFunc("/v1/historic-recalc", HistoricRecalcHandler)
 
 	serverPort := os.Getenv("API_PORT")
 
@@ -70,7 +71,7 @@ func main() {
 
 	log.Println("Starting server on port " + serverPort)
 
-	go PeriodicRoomJob()
+	go PeriodicHistoricJob()
 
 	CheckError(server.ListenAndServe())
 
@@ -216,7 +217,32 @@ func GetHistoricHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonResponse))
 }
 
-func PeriodicRoomJob() {
+func HistoricRecalcHandler(w http.ResponseWriter, r *http.Request) {
+	fromTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("from_time"))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Invalid from_time"))
+		return
+	}
+
+	toTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("to_time"))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Invalid to_time"))
+		return
+	}
+
+	fmt.Println(fromTime.Zone())
+	fmt.Printf("fromTime: %v\n", fromTime)
+	fmt.Printf("toTime: %v\n", toTime)
+
+	for i := fromTime; i.Before(toTime); i = i.Add(1 * time.Minute) {
+		r := GetRooms(i)
+		fmt.Printf("r: %v\n", r)
+	}
+}
+
+func PeriodicHistoricJob() {
 
 	// Get last time and compare with database
 	lastTime := GetLastTime()
@@ -863,7 +889,6 @@ func GetPersonalMacMetadata(mac string) (PersonalMacMetadata, error) {
 			return PersonalMacMetadata{}, errors.New(fmt.Sprintf("An error ocurred retrieving personal mac metadata: %v for the following metadata: '%v'", err.Error(), ret.Metadata))
 		}
 	}
-
 
 	return metadata, nil
 }
