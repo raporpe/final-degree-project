@@ -238,6 +238,7 @@ func HistoricRecalcHandler(w http.ResponseWriter, r *http.Request) {
 
 	for i := fromTime; i.Before(toTime); i = i.Add(1 * time.Minute) {
 		r := GetRooms(i)
+		StoreRoomInDB(r)
 		fmt.Printf("r: %v\n", r)
 	}
 }
@@ -275,6 +276,8 @@ func PeriodicHistoricJob() {
 
 }
 
+// Store the room data in the room_historic table
+// If the room is already stored, overwrite it
 func StoreRoomInDB(r ReturnRooms) error {
 	// Generate the uuid for the room date
 	uuid, err := uuid.NewUUID()
@@ -294,11 +297,17 @@ func StoreRoomInDB(r ReturnRooms) error {
 		return errors.New("Cannot encode data")
 	}
 
-	gormDB.Create(&RoomHistoricDB{
-		ID:   uuid,
-		Date: time.Now().In(l),
-		Data: string(data),
-	})
+	var toFind *RoomHistoricDB
+	gormDB.Where(&RoomHistoricDB{Date: r.EndTime}).Find(toFind)
+
+	// If not found, create one in the database
+	if toFind == nil {
+		gormDB.Create(&RoomHistoricDB{
+			ID:   uuid,
+			Date: r.EndTime, // The reference is the endTime, which is the most recent time
+			Data: string(data),
+		})
+	}
 
 	return nil
 }
