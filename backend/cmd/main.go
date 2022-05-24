@@ -286,10 +286,10 @@ func StoreRoomInDB(r ReturnRooms) error {
 	}
 
 	// Get locale
-	l, err := time.LoadLocation("Europe/Madrid")
-	if err != nil {
-		return errors.New("Cannot load time locale")
-	}
+	//l, err := time.LoadLocation("Europe/Madrid")
+	//if err != nil {
+	//	return errors.New("Cannot load time locale")
+	//}
 
 	// Generate encoded data to store in db
 	data, err := json.Marshal(r)
@@ -515,7 +515,7 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		}
 
 		// Get the clusters from the analysis
-		clusters := SimilarDetector(analyse)
+		clusters := Clustering(analyse)
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
 		//fmt.Printf("clusters: %v\n", clusters)
