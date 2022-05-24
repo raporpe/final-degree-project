@@ -53,6 +53,7 @@ func main() {
 	r.HandleFunc("/v1/last-room", GetLastRoomHandler).Methods("GET")
 	r.HandleFunc("/v1/historic", GetHistoricHandler).Methods("GET")
 	r.HandleFunc("/v1/config", ConfigGetHandler)
+	r.HandleFunc("/v1/historic-recalc", HistoricRecalcHandler)
 
 	serverPort := os.Getenv("API_PORT")
 
@@ -70,7 +71,7 @@ func main() {
 
 	log.Println("Starting server on port " + serverPort)
 
-	go PeriodicRoomJob()
+	go PeriodicHistoricJob()
 
 	CheckError(server.ListenAndServe())
 
@@ -216,7 +217,33 @@ func GetHistoricHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonResponse))
 }
 
-func PeriodicRoomJob() {
+func HistoricRecalcHandler(w http.ResponseWriter, r *http.Request) {
+	fromTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("from_time"))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Invalid from_time"))
+		return
+	}
+
+	toTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("to_time"))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Invalid to_time"))
+		return
+	}
+
+	fmt.Println(fromTime.Zone())
+	fmt.Printf("fromTime: %v\n", fromTime)
+	fmt.Printf("toTime: %v\n", toTime)
+
+	for i := fromTime; i.Before(toTime); i = i.Add(1 * time.Minute) {
+		r := GetRooms(i)
+		StoreRoomInDB(r)
+		fmt.Printf("r: %v\n", r)
+	}
+}
+
+func PeriodicHistoricJob() {
 
 	// Get last time and compare with database
 	lastTime := GetLastTime()
@@ -249,6 +276,8 @@ func PeriodicRoomJob() {
 
 }
 
+// Store the room data in the room_historic table
+// If the room is already stored, overwrite it
 func StoreRoomInDB(r ReturnRooms) error {
 	// Generate the uuid for the room date
 	uuid, err := uuid.NewUUID()
@@ -257,10 +286,10 @@ func StoreRoomInDB(r ReturnRooms) error {
 	}
 
 	// Get locale
-	l, err := time.LoadLocation("Europe/Madrid")
-	if err != nil {
-		return errors.New("Cannot load time locale")
-	}
+	//l, err := time.LoadLocation("Europe/Madrid")
+	//if err != nil {
+	//	return errors.New("Cannot load time locale")
+	//}
 
 	// Generate encoded data to store in db
 	data, err := json.Marshal(r)
@@ -268,11 +297,17 @@ func StoreRoomInDB(r ReturnRooms) error {
 		return errors.New("Cannot encode data")
 	}
 
-	gormDB.Create(&RoomHistoricDB{
-		ID:   uuid,
-		Date: time.Now().In(l),
-		Data: string(data),
-	})
+	var toFind *RoomHistoricDB
+	gormDB.Where(&RoomHistoricDB{Date: r.EndTime}).Find(toFind)
+
+	// If not found, create one in the database
+	if toFind == nil {
+		gormDB.Create(&RoomHistoricDB{
+			ID:   uuid,
+			Date: r.EndTime, // The reference is the endTime, which is the most recent time
+			Data: string(data),
+		})
+	}
 
 	return nil
 }
@@ -480,7 +515,7 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		}
 
 		// Get the clusters from the analysis
-		clusters := SimilarDetector(analyse)
+		clusters := Clustering(analyse)
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
 		//fmt.Printf("clusters: %v\n", clusters)
@@ -542,7 +577,6 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 	inconsistentData := false
 	inconsistentTimes := make([]time.Time, 0)
 
-	
 	for _, checkingTime := range expectedStartTimes {
 		matchInDB := false
 		multipleMatchInDB := false
@@ -856,10 +890,13 @@ func GetPersonalMacMetadata(mac string) (PersonalMacMetadata, error) {
 	var ret PersonalMacsDB
 	gormDB.Where("mac = ?", mac).Find(&ret)
 
-	var metadata PersonalMacMetadata
-	err := json.Unmarshal([]byte(ret.Metadata), &metadata)
-	if err != nil {
-		return PersonalMacMetadata{}, errors.New("An error ocurred retrieving personal mac metadata: " + err.Error())
+	// Fix bug: ret.Metadata could be empty string
+	metadata := PersonalMacMetadata{}
+	if ret.Metadata != "" {
+		err := json.Unmarshal([]byte(ret.Metadata), &metadata)
+		if err != nil {
+			return PersonalMacMetadata{}, errors.New(fmt.Sprintf("An error ocurred retrieving personal mac metadata: %v for the following metadata: '%v'", err.Error(), ret.Metadata))
+		}
 	}
 
 	return metadata, nil
@@ -950,6 +987,9 @@ func (p PersonalMacMetadata) UpdateInDB(mac string) {
 	}
 
 	var db PersonalMacsDB
+	if string(meta) == "" {
+		log.Printf("EMPTY METADATA STORAGE!!! FOR MAC %v", mac)
+	}
 	gormDB.Where("mac = ?", mac).Find(&db).Update("metadata", string(meta))
 
 }
