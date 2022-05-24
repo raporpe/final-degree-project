@@ -104,14 +104,14 @@ func IsDeviceActive(presenceRecord []bool) bool {
 	for i, v := range presenceRecord {
 		if v {
 			totalCounter += 1
-			if i >= len(presenceRecord)-len(presenceRecord)/5 {
+			if float64(i) >= float64(len(presenceRecord))-float64(len(presenceRecord))/5.0 {
 				recentCounter += 1
 			}
 		}
 	}
 
-	totalActivity := float64(totalCounter/len(presenceRecord)) > 0.2
-	recentActivity := float64(recentCounter/len(presenceRecord)/5) > 0.6
+	totalActivity := float64(totalCounter)/float64(len(presenceRecord)) > 0.2
+	recentActivity := float64(recentCounter)/float64(len(presenceRecord)/5) > 0.6
 
 	return totalActivity || recentActivity
 }
