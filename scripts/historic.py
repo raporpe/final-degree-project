@@ -7,15 +7,15 @@ import time
 # Get the data from the api
 p1 = {
     "from_time": dt.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + "Z",
-    "to_time": dt.datetime.now().isoformat() + "Z"
+    "to_time": dt.datetime.now().isoformat() + "+02:00"
 }
 
 p2 = {
-    "from_time": "2022-05-19T00:00:00Z",
-    "to_time": dt.datetime.now().isoformat() + "Z"
+    "from_time": "2022-05-23T00:00:00Z",
+    "to_time": dt.datetime.now().isoformat() + "+02:00"
 }
 
-resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=p1)
+resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=p2)
 
 
 rooms = resp.json()["rooms"]
@@ -31,4 +31,3 @@ print(series[0])
 for s in series:
     fig = px.line(s[0], x='hora', y="ocupacion", title=s[1])
     fig.show()
-    time.sleep(5)
