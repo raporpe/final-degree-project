@@ -48,7 +48,7 @@ class Chart extends React.Component {
                         const barHeight = yMax - (yScale(value * 100) ?? 0);
                         const barX = xScale(date);
                         const barY = yMax - barHeight;
-                        const color = Number(date) === new Date().getHours() - 2 ?  "rgba(153, 51, 255, 0.8)" : "rgba(80, 171, 255, 1)"
+                        const color = Number(date) === new Date().getHours() ?  "rgba(153, 51, 255, 0.8)" : "rgba(80, 171, 255, 1)"
                         return (
                             <Bar
                                 key={`bar-${date}`}
