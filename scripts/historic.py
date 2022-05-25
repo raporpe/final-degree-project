@@ -11,14 +11,21 @@ p1 = {
 }
 
 p2 = {
-    "from_time": "2022-05-23T00:00:00Z",
+    "from_time": "2022-05-23T00:00:00+02:00",
     "to_time": dt.datetime.now().isoformat() + "+02:00"
 }
 
-resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=p2)
+p3 = {
+    "from_time": "2022-05-24T00:00:00+02:00",
+    "to_time": "2022-05-24T02:00:00+02:00"
+}
+
+resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=p3)
 
 
 rooms = resp.json()["rooms"]
+
+print(rooms)
 
 
 series = []
