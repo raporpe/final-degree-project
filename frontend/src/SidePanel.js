@@ -37,16 +37,28 @@ class SidePanel extends React.Component {
 
                 Object.entries(json.rooms).forEach(room => {
                     let compressed = {}
+                    let counter = {}
 
                     for (let i = 0; i < 24; i++) {
-                        compressed[i] = 0;
+                        compressed[i] = 0.0;
+                        counter[i] = 0.0;
                     }
 
                     Object.entries(room[1]).forEach((d) => {
                         let toDate = new Date(d[0])
-                        compressed[toDate.getHours()] = compressed[toDate.getHours()] + (d[1]*1.0 / 60);
-
+                        compressed[toDate.getHours()] = compressed[toDate.getHours()] + d[1]*1.0;
+                        counter[toDate.getHours()] += 1.0
                     })
+
+                    // Divide to calculate average
+                    Object.entries(compressed).forEach((e) => {
+                        if (counter[e[0]] > 0) {
+                            compressed[e[0]] = (compressed[e[0]]*1.0) / (counter[e[0]]*1.0)
+                        }
+                    })
+
+                    console.log(compressed)
+
                     json.rooms[room[0]] = compressed;
                 })
                 this.setState({
