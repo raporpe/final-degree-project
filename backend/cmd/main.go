@@ -236,11 +236,14 @@ func HistoricRecalcHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("fromTime: %v\n", fromTime)
 	fmt.Printf("toTime: %v\n", toTime)
 
-	for i := fromTime; i.Before(toTime); i = i.Add(1 * time.Minute) {
-		r := GetRooms(i)
-		StoreRoomInDB(r)
-		fmt.Printf("r: %v\n", r)
-	}
+	// Perform the historic recalc async
+	go func() {
+		for i := fromTime; i.Before(toTime); i = i.Add(1 * time.Minute) {
+			r := GetRooms(i)
+			StoreRoomInDB(r)
+			fmt.Printf("r: %v\n", r)
+		}
+	}()
 }
 
 func PeriodicHistoricJob() {
