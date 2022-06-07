@@ -9,10 +9,8 @@ import plotly.graph_objs as go
 # Read data from file
 real = pd.read_csv(sys.argv[1], header=0, sep=",")
 
-# Multiply the count column in dataset real by 20%
+# Multiply the count column in dataset real
 real["count"] = real["count"] * 2.2
-
-print(real)
 
 
 par = {
@@ -43,7 +41,11 @@ for s in series:
     # Plot obtained data in plotly using scatter
     fig.add_trace(go.Scatter(x=obtained["date"], y=obtained["count"], name="Aproximated"))
 
-    # Plot the real data in plotly
-    fig.add_trace(go.Scatter(x=real["date"], y=real["count"], name="Real"))
+    # Add title to the figure
+    fig.update_layout(title_text="Approximated vs Real")
+
+    # Plot the real data in plotly in magenta colour
+    fig.add_trace(go.Scatter(x=real["date"], y=real["count"], name="Real", line=dict(color="magenta")))
+
 
     fig.show()
