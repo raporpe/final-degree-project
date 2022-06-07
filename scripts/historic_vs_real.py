@@ -4,7 +4,6 @@ import datetime as dt
 import requests
 from datetime import datetime
 import sys
-import pytz
 import plotly.graph_objs as go
 
 # Read data from file
