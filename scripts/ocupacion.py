@@ -1,7 +1,8 @@
+from hashlib import new
 import psycopg2
 import plotly.express as px
 import pandas as pd
-import datetime
+import datetime as dt
 from tqdm import tqdm
 
 
@@ -48,8 +49,13 @@ class Mac:
 
 
 
-start_time = 1644505200 + 3600*24*7
-end_time = start_time + 3600*24*14
+# Crete variable of date
+start_time = dt.datetime.fromisoformat("2022-02-24T12:00:00")
+
+# Sum 14 days to start_time
+end_time = start_time + dt.timedelta(days=14)
+
+
 slice_size = 60
 slices_to_active = 5
 
@@ -60,39 +66,65 @@ conn = psycopg2.connect(
 cur = conn.cursor()
 
 
-probe_request_query = "select * from probe_request_frames where time < {e} and time > {s}".format(e=end_time, s=start_time)
+probe_request_query = "select * from \"old-tfg\".probe_request_frames where time < '{e}' and time > '{s}'".format(e=end_time.isoformat(), s=start_time.isoformat())
+print(probe_request_query)
 probe_request_df = pd.read_sql_query(probe_request_query, conn)
 
-slices = [i for i in range(start_time, end_time, slice_size)]
+dates = []
+# Append all the dates between start_time and end_time in increments of slice_size
+for i in range(0, int((end_time - start_time).total_seconds()), slice_size):
+    dates.append(start_time + dt.timedelta(seconds=i))
+
+
+print(dates)
 
 # Initialize the mac address manager
 mac_manager = MacManager()
 
-series = []
+new_mac_addresses = []
+new_mac_addresses_cumulative = []
 times = []
 
-for t in tqdm(slices):
+# slice_size to seconds in datetime object
+slice_size_dt = dt.timedelta(seconds=slice_size)
+
+mac_set = set()
+
+for t in tqdm(dates):
 
     lst = probe_request_df.loc[
-        (probe_request_df["time"] > (t - slice_size)) &
+        (probe_request_df["time"] > (t - slice_size_dt)) &
         (probe_request_df["time"] < t),
     ]["station_mac"].tolist()
 
-    mac_manager.add_macs(set(lst))
-    n = mac_manager.get_current_macs()
-    series.append(n)
+    # Get the number of elements in lst that are in the set mac_set
+    s = set(lst)
+    new_macs = len(s) - len(s.intersection(mac_set))
+
+
+    # Add lst to the set mac_set
+    mac_set.update(lst)
+
+    new_mac_addresses.append(new_macs)
+    new_mac_addresses_cumulative.append(len(mac_set))
     times.append(t)
 
 
 data = {
     "time": times,
-    "addresses":series
+    "new MAC addresses": new_mac_addresses,
+    "new MAC addresses cumulative": new_mac_addresses_cumulative
 }
 df = pd.DataFrame(data)
-df.time = df.time.apply(lambda d: datetime.datetime.fromtimestamp(
-    int(d)).strftime('%d %a - %Hh:%M'))
 
-fig = px.line(df, x="time", y="addresses")
+#fig = px.line(df, x="time", y=["new MAC addresses", "new MAC addresses cumulative"])
+fig = px.line(df, x="time", y="new MAC addresses")
+
+
+# Add more ticks in the figure x axis
+fig.update_xaxes(dtick="1d")
+
+
 fig.show()
 
 
