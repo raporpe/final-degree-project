@@ -301,10 +301,10 @@ func StoreRoomInDB(r ReturnRooms) error {
 	}
 
 	var toFind *RoomHistoricDB
-	gormDB.Where(&RoomHistoricDB{Date: r.EndTime}).Find(toFind)
+	result := gormDB.Where(&RoomHistoricDB{Date: r.EndTime}).First(&toFind)
 
 	// If not found, create one in the database
-	if toFind == nil {
+	if result.RowsAffected == 0 {
 		gormDB.Create(&RoomHistoricDB{
 			ID:   uuid,
 			Date: r.EndTime, // The reference is the endTime, which is the most recent time
