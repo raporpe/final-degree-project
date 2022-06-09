@@ -151,3 +151,121 @@ func TestIsDeviceActive(t *testing.T) {
 	}
 
 }
+
+func TestCluster(t *testing.T) {
+
+	m1 := []MacDigest{
+		{
+			Mac: "aa:3c:1a:e3:5a:50", // Cluster A
+			Tags: []int{
+				10,
+				50,
+				5,
+				1,
+			},
+		},
+		{
+			Mac: "ab:3c:1a:e3:5a:50", // Cluster A
+			Tags: []int{
+				10,
+				50,
+				5,
+				1,
+			},
+		},
+		{
+			Mac: "zz:3c:1a:e3:5a:50", // Similar to ab:3c:1a:e3:5a:50 but different ordering
+			Tags: []int{ // (test not in cluster A)
+				10,
+				5,
+				50,
+				1,
+			},
+		},
+		{
+			Mac: "bb:01:1a:e3:5a:50", // Cluster B
+			Tags: []int{
+				10,
+				50,
+				1,
+				2,
+			},
+		},
+		{
+			Mac: "bb:02:1a:e3:5a:50", // Cluster B
+			Tags: []int{
+				10,
+				50,
+				1,
+				2,
+			},
+		},
+		{
+			Mac: "bb:03:1a:e3:5a:50", // Cluster B
+			Tags: []int{
+				10,
+				50,
+				1,
+				2,
+			},
+		},
+		{
+			Mac: "cc:01:1a:e3:5a:50", // Unique but similar
+			Tags: []int{
+				1,
+				2,
+				3,
+				4,
+			},
+		},
+		{
+			Mac: "dd:01:1a:e3:5a:50", // Unique but similar
+			Tags: []int{
+				1,
+				2,
+				4,
+				3,
+			},
+		},
+		{
+			Mac: "ee:01:1a:e3:5a:50", // Unique but similar
+			Tags: []int{
+				5,
+				2,
+				4,
+				3,
+			},
+		},
+	}
+
+	want := [][]string{
+		{
+			"aa:3c:1a:e3:5a:50",
+			"ab:3c:1a:e3:5a:50",
+		},
+		{
+			"zz:3c:1a:e3:5a:50",
+		},
+		{
+			"bb:01:1a:e3:5a:50",
+			"bb:02:1a:e3:5a:50",
+			"bb:03:1a:e3:5a:50",
+		},
+		{
+			"cc:01:1a:e3:5a:50",
+		},
+		{
+			"dd:01:1a:e3:5a:50",
+		},
+		{
+			"ee:01:1a:e3:5a:50",
+		},
+	}
+
+	have := Clustering(m1)
+
+	if !cmp.Equal(want, have) {
+		t.Fatalf("Error in Clustering, \ngot %v, \nwanted %v", have, want)
+	}
+
+}

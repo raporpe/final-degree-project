@@ -301,15 +301,20 @@ func StoreRoomInDB(r ReturnRooms) error {
 	}
 
 	var toFind *RoomHistoricDB
-	gormDB.Where(&RoomHistoricDB{Date: r.EndTime}).Find(toFind)
+	result := gormDB.Where(&RoomHistoricDB{Date: r.EndTime}).First(&toFind)
 
 	// If not found, create one in the database
-	if toFind == nil {
+	if result.RowsAffected == 0 {
 		gormDB.Create(&RoomHistoricDB{
 			ID:   uuid,
 			Date: r.EndTime, // The reference is the endTime, which is the most recent time
 			Data: string(data),
 		})
+	}
+	
+	// If found, update the data
+	if result.RowsAffected == 1 {
+		gormDB.Model(&toFind).Update("data", string(data))
 	}
 
 	return nil
@@ -369,6 +374,9 @@ func GetHistoricRoomInDB(from time.Time, to time.Time) (ReturnHistoricRooms, err
 }
 
 func GetRooms(lastTime time.Time) ReturnRooms {
+	// Normalize lastTime: set seconds and microseconds to zero
+	lastTime = time.Date(lastTime.Year(), lastTime.Month(), lastTime.Day(), lastTime.Hour(), lastTime.Minute(), 0, 0, lastTime.Location())
+
 	// Get all the current rooms
 	var allRooms []RoomsDB
 	gormDB.Find(&allRooms)
