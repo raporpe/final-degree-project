@@ -369,6 +369,9 @@ func GetHistoricRoomInDB(from time.Time, to time.Time) (ReturnHistoricRooms, err
 }
 
 func GetRooms(lastTime time.Time) ReturnRooms {
+	// Normalize lastTime: set seconds and microseconds to zero
+	lastTime = time.Date(lastTime.Year(), lastTime.Month(), lastTime.Day(), lastTime.Hour(), lastTime.Minute(), 0, 0, lastTime.Location())
+
 	// Get all the current rooms
 	var allRooms []RoomsDB
 	gormDB.Find(&allRooms)
