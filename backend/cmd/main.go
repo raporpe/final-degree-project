@@ -311,6 +311,11 @@ func StoreRoomInDB(r ReturnRooms) error {
 			Data: string(data),
 		})
 	}
+	
+	// If found, update the data
+	if result.RowsAffected == 1 {
+		gormDB.Model(&toFind).Update("data", string(data))
+	}
 
 	return nil
 }
