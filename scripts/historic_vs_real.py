@@ -9,9 +9,6 @@ import plotly.graph_objs as go
 # Read data from file
 real = pd.read_csv(sys.argv[1], header=0, sep=",")
 
-# Multiply the count column in dataset real
-real["count"] = real["count"] * 2.2
-
 
 par = {
     "from_time": datetime.fromisoformat(min(real["date"])).isoformat('T')+"+02:00",
@@ -20,8 +17,13 @@ par = {
 
 print(par)
 
+# Force historic recalculation
+if len(sys.argv) > 2 and sys.argv[2] == "true":
+    requests.get("https://tfg-api.raporpe.dev/v1/historic-recalc", params=par)
+
 # Get the data from the api
 resp = requests.get("https://tfg-api.raporpe.dev/v1/historic", params=par)
+
 
 rooms = resp.json()["rooms"]
 
@@ -34,6 +36,9 @@ for room_name in rooms:
 
 for s in series:
     obtained = s[0]
+    
+    # Multiply the count column in dataset obtained
+    obtained["count"] = obtained["count"]
 
     # Create empty plotly figure
     fig = go.Figure()
