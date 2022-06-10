@@ -238,9 +238,15 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
         // Increase the count of the type
         detectedMacs->find(macAddress)->second.typeCount[type]++;
 
-        // Add the ssid probe if it is set
-        if (ssidProbe != "")
+        // Add the ssid probe if it is not null and not already in the list
+        if (ssidProbe != "" &&
+            std::find(detectedMacs->find(macAddress)->second.ssidProbes.begin(),
+                      detectedMacs->find(macAddress)->second.ssidProbes.end(),
+                      ssidProbe) ==
+                detectedMacs->find(macAddress)->second.ssidProbes.end())
+        {
             detectedMacs->find(macAddress)->second.ssidProbes.push_back(ssidProbe);
+        }
         
         // Add htCapabilities
         if (htCapabilities != "")
@@ -251,10 +257,18 @@ void PacketManager::countDevice(mac macAddress, double signalStrength, string ss
             detectedMacs->find(macAddress)->second.htExtendedCapabilities = htExtendedCapabilities;
 
         // Supported rates
-        copy(supportedRates.begin(), supportedRates.end(), back_inserter(detectedMacs->find(macAddress)->second.supportedRates));
+        // If the detected supported rates are not empty, replace the list with the new ones
+        if (supportedRates.size() > 0)
+        {
+            detectedMacs->find(macAddress)->second.supportedRates = supportedRates;
+        }
 
         // Tags
-        copy(tags.begin(), tags.end(), back_inserter(detectedMacs->find(macAddress)->second.tags));
+        // If the detected tags are not empty, replace the list with the new ones
+        if (tags.size() > 0)
+        {
+            detectedMacs->find(macAddress)->second.tags = tags;
+        }
 
         // If the mac address has not been counted in the current window
     }
