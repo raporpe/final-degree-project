@@ -1159,7 +1159,7 @@ func GetStartEndTime() (time.Time, time.Time) {
 func GetLastTime() time.Time {
 
 	now := time.Now()
-	t := now.Truncate(60 * time.Second).Add(0 * time.Minute).Add(-1 * time.Minute)
+	t := now.Truncate(60 * time.Second).Add(-1 * time.Minute)
 
 	fmt.Printf("Generated time: %v\n", t)
 
