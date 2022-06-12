@@ -676,8 +676,17 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 				m.TypeCount[1] += data.TypeCount[1]
 				m.TypeCount[2] += data.TypeCount[2]
 				m.SSIDProbes = DeduplicateSlice(append(m.SSIDProbes, data.SSIDProbes...))
-				m.HTCapabilities = data.HTCapabilities
-				m.HTExtendedCapabilities = data.HTExtendedCapabilities
+
+				if data.HTCapabilities != nil {
+					m.HTCapabilities = data.HTCapabilities
+				}
+
+				if data.HTExtendedCapabilities != nil {
+					m.HTExtendedCapabilities = data.HTExtendedCapabilities
+				}
+
+				
+
 				m.SupportedRates = DeduplicateSlice(append(m.SupportedRates, data.SupportedRates...))
 				m.Tags = DeduplicateSlice(append(m.Tags, data.Tags...))
 
