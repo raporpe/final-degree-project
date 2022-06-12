@@ -311,7 +311,7 @@ func StoreRoomInDB(r ReturnRooms) error {
 			Data: string(data),
 		})
 	}
-	
+
 	// If found, update the data
 	if result.RowsAffected == 1 {
 		gormDB.Model(&toFind).Update("data", string(data))
@@ -685,8 +685,6 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 					m.HTExtendedCapabilities = data.HTExtendedCapabilities
 				}
 
-				
-
 				m.SupportedRates = DeduplicateSlice(append(m.SupportedRates, data.SupportedRates...))
 				m.Tags = DeduplicateSlice(append(m.Tags, data.Tags...))
 
@@ -844,8 +842,10 @@ func DetectedMacsGetHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response[elem.EndTime][elem.DeviceID] = ReturnDetectedMacs{
+			DeviceID:         elem.DeviceID,
 			DetectedMacs:     d,
 			SecondsPerWindow: elem.SecondsPerWindow,
+			StartTime:        elem.StartTime,
 			EndTime:          elem.EndTime,
 		}
 	}
@@ -1032,6 +1032,7 @@ type ReturnDetectedMacs struct {
 	DeviceID         string                 `json:"device_id"`
 	DetectedMacs     map[string]MacMetadata `json:"detected_macs"`
 	SecondsPerWindow int                    `json:"seconds_per_window"`
+	StartTime        time.Time              `json:"start_time"`
 	EndTime          time.Time              `json:"end_time"`
 }
 
