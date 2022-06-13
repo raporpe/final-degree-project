@@ -8,7 +8,7 @@ from sklearn.cluster import OPTICS
 from pydantic import BaseModel
 
 # Import logarithms
-from math import log
+from math import dist, log
 
 # The model of a digested MAC to cluster
 class DigestedMAC(BaseModel):
@@ -18,22 +18,26 @@ class DigestedMAC(BaseModel):
     oui_id: str
     type_count: list[int]
     presence_record: list[bool]
-    ssid_probes: list[str]
+    ssid_probes: list[str] | None
     ht_capabilities: str | None
     ht_extended_capabilities: str | None
-    supported_rates: list[float]
-    tags: list[int]
+    supported_rates: list[float] | None
+    tags: list[int] | None
 
 
 # FastAPI will be used for receiving data from Go
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+# Import requestvalidationerror
+from fastapi.exceptions import RequestValidationError
+# Import JSONResponse
+from fastapi.responses import JSONResponse
+import logging
 
 # Define the single API route for receiving digested MACs
 app = FastAPI()
 
 @app.post("/cluster")
-def receive_digested_macs(digested_macs: list[DigestedMAC]):
-    # Perform dimensionality reduction with t-SNE
+def receive_digested_macs(digested_macs: dict[str, DigestedMAC]):
 
     # Calculate the distances between the digested MACs in a distance matrix
     distance_matrix = calculate_distance_matrix(digested_macs)
@@ -41,6 +45,15 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
     # Perform t-SNE
     tsne = TSNE(n_components=2, perplexity=30, n_iter=300)
     tsne_results = tsne.fit_transform(distance_matrix)
+
+    # Print the t-SNE results
+    print("t-SNE results:")
+    print(tsne_results)
+
+    # Plot the tne results with plotly
+    import plotly.express as px
+    fig = px.scatter(tsne_results, x=0, y=1)
+    fig.show()
 
     # Perform OPTICS clustering
     optics = OPTICS(min_samples=5, xi=0.05, min_cluster_size=0.05)
@@ -50,21 +63,25 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
     labels = optics.labels_
 
     # Show the results of optics clustering
+    print("--------- results ----------")
     print(labels)
 
     # Return the labels of the clusters
-    return labels
+    return labels.tolist()
 
 
 # The distance matrix calculator
-def calculate_distance_matrix(digested_macs: list[DigestedMAC]):
+def calculate_distance_matrix(digested_macs: dict[str, DigestedMAC]):
     # Create a distance matrix
     distance_matrix = [[0 for i in range(len(digested_macs))] for j in range(len(digested_macs))]
 
-    # Calculate the distances between the digested MACs
+    print(distance_matrix)
+
+    # Calculate the distances between the digested MACs traversing keys
     for i in range(len(digested_macs)):
         for j in range(len(digested_macs)):
-            distance_matrix[i][j] = calculate_distance(digested_macs[i], digested_macs[j])
+            # Calculate the distance between the digested MACs
+            distance_matrix[i][j] = calculate_distance(digested_macs[list(digested_macs.keys())[i]], digested_macs[list(digested_macs.keys())[j]])
     
     return distance_matrix
 
@@ -101,18 +118,26 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
         distance += 0 if digested_mac_1.ht_extended_capabilities == digested_mac_2.ht_extended_capabilities else 1
 
     # Calculate the distance between the supported rates
-    if digested_mac_1.supported_rates != digested_mac_2.supported_rates:
-        distance += 1
+    if digested_mac_1.tags != None and digested_mac_2 != None:
+        distance += 1 if digested_mac_1.supported_rates != digested_mac_2.supported_rates else 0
     
     # Calculate the distance between the tags
-    if digested_mac_1.tags != digested_mac_2.tags:
-        distance += 1
+    if digested_mac_1.tags != None and digested_mac_2 != None:
+        distance += 1 if digested_mac_1.tags != digested_mac_2.tags else 0
     
     return distance
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Print request body 
+    exc_str = f'{exc}'.replace('\n', ' ').replace('   ', ' ')
+    logging.error(exc_str)
+    content = {'status_code': 10422, 'message': exc_str, 'data': None}
+    return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
 # Run the fastAPI server
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("clustering:app", host="0.0.0.0", port=8000, log_level="debug", reload=True)
     
