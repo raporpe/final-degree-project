@@ -534,16 +534,16 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		}
 
 		// Get the clusters from the analysis
-		clusters := Clustering(analyse)
+		//clusters := Clustering(analyse)
 
 		log.Printf("Digests sent for analysis: %v", len(analyse))
 
 		// Just for testing
-		Clustering2(analyse)
+		clusters, err := Clustering2(analyse)
 		// If there was a clustering error, return an error
-		//if err != nil {
-		//	return ReturnClusteredMacs{}, err
-		//}
+		if err != nil {
+			return ReturnClusteredMacs{}, err
+		}
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
 		//fmt.Printf("clusters: %v\n", clusters)
