@@ -1,5 +1,6 @@
 from mac_vendor_lookup import MacLookup, VendorNotFoundError
 import psycopg2
+import os
 
 MacLookup().update_vendors()
 
@@ -11,8 +12,10 @@ def vendor(mac):
         return None
 
 
+# Get the database password from the environment variable
+db_password = os.environ['DB_PASSWORD']
 
-conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
+conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=" + db_password)
 cur = conn.cursor()
 cur.execute("SELECT * FROM probe_request ORDER BY time")
 print(cur.rowcount)

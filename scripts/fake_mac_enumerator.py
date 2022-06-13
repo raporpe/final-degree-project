@@ -1,5 +1,6 @@
 import psycopg2
 from mac_vendor_lookup import MacLookup, VendorNotFoundError
+import os
 
 def vendor(mac):
     try:
@@ -7,8 +8,10 @@ def vendor(mac):
     except VendorNotFoundError:
         return None
 
+# Get the database password from the environment variable
+db_password = os.environ['DB_PASSWORD']
 
-conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
+conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=" + db_password)
 cur = conn.cursor()
 
 cur.execute("SELECT distinct station_mac FROM data_frames")

@@ -1,17 +1,17 @@
 import psycopg2
 import plotly.express as px
 import pandas as pd
-import time
-import datetime
-from tqdm import tqdm
-import plotly.graph_objs as go
+import os
 
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 print("Connecting to db...")
 
+# Get the database password from the environment variable
+db_password = os.environ['DB_PASSWORD']
+
 conn = psycopg2.connect(
-    "host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
+    "host=tfg-server.raporpe.dev dbname=tfg user=postgres password= " + db_password)
 cur = conn.cursor()
 
 print("Connected to db!")

@@ -8,7 +8,7 @@ from sklearn.cluster import OPTICS
 from pydantic import BaseModel
 
 # Import logarithms
-from math import dist, log
+from math import log
 
 # The model of a digested MAC to cluster
 class DigestedMAC(BaseModel):

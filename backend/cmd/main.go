@@ -33,7 +33,14 @@ var gormDB *gorm.DB
 var windowSizeSeconds = 60
 
 func main() {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", "raulportugues", "tfg")
+	// Get the database password from the environment variable
+	dbPassword := os.Getenv("DB_PASSWORD")
+	if dbPassword == "" {
+		log.Println("DB_PASSWORD environment variable not set!")
+		os.Exit(1)
+	}
+
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "tfg-server.raporpe.dev", 5432, "postgres", dbPassword, "tfg")
 
 	var err error
 	gormDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})

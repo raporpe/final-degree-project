@@ -1,9 +1,9 @@
-from hashlib import new
 import psycopg2
 import plotly.express as px
 import pandas as pd
 import datetime as dt
 from tqdm import tqdm
+import os
 
 
 class MacManager:
@@ -61,8 +61,11 @@ slices_to_active = 5
 
 print("Connecting to db...")
 
+# Import the database password from the environment variable
+db_password = os.environ['DB_PASSWORD']
+
 conn = psycopg2.connect(
-    "host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
+    "host=tfg-server.raporpe.dev dbname=tfg user=postgres password=" + db_password)
 cur = conn.cursor()
 
 

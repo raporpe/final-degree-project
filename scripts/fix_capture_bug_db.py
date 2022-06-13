@@ -2,10 +2,13 @@ from dis import code_info
 import psycopg2
 import datetime as dt
 import json
-import time
+import os
+
+# Get the database password from the environment variable
+db_password = os.environ['DB_PASSWORD']
 
 # Connect to the database
-conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=raulportugues")
+conn = psycopg2.connect("host=tfg-server.raporpe.dev dbname=tfg user=postgres password=" + db_password)
 cur = conn.cursor()
 
 # Start time from string
