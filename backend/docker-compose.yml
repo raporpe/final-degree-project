@@ -20,10 +20,8 @@ services:
     - API_PORT=5000
     restart: "unless-stopped"
 
-  #optics:
-  #  build: ./optics
-  #  volumes:
-  #  - "./optics:/app"
-  #  ports:
-  #  - "9000:80"
-  #  restart: "unless-stopped"
+  clustering:
+    build: "./clustering"
+    ports:
+    - "80:8000"
+    restart: "unless-stopped"
