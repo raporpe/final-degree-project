@@ -527,11 +527,14 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		}
 
 		// Get the clusters from the analysis
-		clusters, err := Clustering2(analyse)
+		clusters := Clustering(analyse)
+
+		// Just for testing
+		Clustering2(analyse)
 		// If there was a clustering error, return an error
-		if err != nil {
-			return ReturnClusteredMacs{}, err
-		}
+		//if err != nil {
+		//	return ReturnClusteredMacs{}, err
+		//}
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))
 		//fmt.Printf("clusters: %v\n", clusters)
@@ -943,19 +946,9 @@ func GetMacVendor(mac string) *string {
 }
 
 func GetMacPrefix(mac string) *string {
-	if macDB == nil {
-		var err error
-		macDB, err = oui.OpenStaticFile("oui.txt")
-		CheckError(err)
-	}
-
-	result, err := macDB.Query(mac)
-	if err != nil {
-		return nil
-	} else {
-		res := result.Prefix.String()
-		return &res
-	}
+	// The first three octets of the MAC address are the prefix 00:00:00
+	prefix := mac[0:8]
+	return &prefix
 }
 
 func CheckError(err error) {
