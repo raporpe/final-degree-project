@@ -1,8 +1,6 @@
-from email.quoprimime import body_length
 from datetime import datetime
 import time
 import requests
-import logging
 
 API_ENDPOINT = "http://tfg-server.raporpe.dev:2000/v1/upload"
 DEVICE_ID = "raspberry-1"
