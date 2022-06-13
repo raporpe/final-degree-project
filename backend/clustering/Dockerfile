@@ -1,15 +1,14 @@
-# Using python 3.10
-FROM python:3.10-alpine
+# Using python 3.11
+FROM python:3.10-bullseye
 
-# Install dependencies
-RUN apk add --no-cache python3-pip
+WORKDIR /app
+
+# Install requirements
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
 # Copy all the files in current directory
 COPY . /app
 
-# Install requirements
-RUN pip3 install -r requirements.txt
-
 # Run the app
-WORKDIR /app
 CMD ["python", "clustering.py"]
