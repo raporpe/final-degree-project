@@ -31,7 +31,7 @@ from fastapi import FastAPI
 # Define the single API route for receiving digested MACs
 app = FastAPI()
 
-@app.post("/digested-macs")
+@app.post("/cluster")
 def receive_digested_macs(digested_macs: list[DigestedMAC]):
     # Perform dimensionality reduction with t-SNE
 
