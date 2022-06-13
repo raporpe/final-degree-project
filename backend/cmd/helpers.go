@@ -247,11 +247,14 @@ func Optics(m []MacDigest) ([][]string, error) {
 	return ret, nil
 }
 
-
-// Function that calls the clustering API at http://clustering/cluster
+// Function that calls the clustering API at http://clustering:8000/cluster
 // and returns the clusters in a list of lists of strings
 func Clustering2(m []MacDigest) ([][]string, error) {
-	
+
+	if m == nil {
+		return nil, nil
+	}
+
 	client := http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -263,7 +266,7 @@ func Clustering2(m []MacDigest) ([][]string, error) {
 
 	fmt.Printf("j: %v\n", string(j))
 
-	req, err := http.NewRequest("POST", "http://clustering/cluster", bytes.NewBuffer(j))
+	req, err := http.NewRequest("POST", "http://10.144.0.4:8000/cluster", bytes.NewBuffer(j))
 	if err != nil {
 		return nil, err
 	}
@@ -294,5 +297,3 @@ func Clustering2(m []MacDigest) ([][]string, error) {
 	return clusters, nil
 
 }
-
-	
