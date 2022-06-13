@@ -26,9 +26,9 @@ print("Getting data from db....")
 start_time = "2022-02-22 00:00"
 end_time = datetime.now().isoformat()
 
-probe_request_query = "select * from probe_request_frames where time > 1645355292"
-probe_response_query = "select * from probe_response_frames where time > 1645355292"
-data_query = "select * from data_frames where time > 1645355292"
+probe_request_query = "select * from \"old-tfg\".probe_request_frames where time > '2022-02-20 11:08:12'"
+probe_response_query = "select * from \"old-tfg\".probe_response_frames where time > '2022-02-20 11:08:12'"
+data_query = "select * from \"old-tfg\".data_frames where time > '2022-02-20 11:08:12'"
 probe_request_df = pd.read_sql_query(probe_request_query, conn)
 probe_response_df = pd.read_sql_query(probe_response_query, conn)
 data_df = pd.read_sql_query(data_query, conn)
