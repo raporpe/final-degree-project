@@ -66,8 +66,24 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
     # Show the results of optics clustering
     print("--------- results ----------")
 
-    # Return the labels of the clusters
-    return labels.tolist()
+    # Create a list of length max(labels)
+    ret = [[] for i in range(max(labels) + 1)]
+    noise = []
+
+
+    # Create a list of tuples of the form (mac, cluster_id)
+    for idx, l  in enumerate(labels):
+        if l < 0:
+            noise.append([digested_macs[idx].mac])
+        else:
+            ret[l].append(digested_macs[idx].mac)
+            
+    # Merge ret and noise
+    ret = ret + noise
+    
+    print(ret)
+
+    return ret
 
 
 # The distance matrix calculator
@@ -84,7 +100,7 @@ def calculate_distance_matrix(digested_macs: list[DigestedMAC]):
     import plotly.express as px
     # Plot the distance matrix
     fig = px.imshow(distance_matrix)
-    fig.show()
+    # fig.show()
     
     return distance_matrix
 
@@ -95,8 +111,8 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
 
     # Calculate the distance between the average signal strenght
     # The average signal strenght are converted to logarithmic scale
-    dbm = 10*log(digested_mac_1.average_signal_strenght/100000, 10) - 10*log(digested_mac_2.average_signal_strenght/100000, 10)
-    distance += normalize(dbm, 0, -100)*15
+    dbm = abs(10*log(digested_mac_1.average_signal_strenght/100000, 10) - 10*log(digested_mac_2.average_signal_strenght/100000, 10))
+    distance += normalize(dbm, 0, 100)*15
     # MAX 15
 
 
