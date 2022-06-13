@@ -116,10 +116,10 @@ func IsDeviceActive(presenceRecord []bool) bool {
 		}
 	}
 
-	totalActivity := float64(totalCounter)/float64(len(presenceRecord)) > 0.2
+	totalActivity := float64(totalCounter)/float64(len(presenceRecord)) > 0.6
 	recentActivity := float64(recentCounter)/float64(len(presenceRecord)/5) > 0.6
 
-	return totalActivity || recentActivity
+	return totalActivity || (recentActivity && false)
 }
 
 // Merge cluster c2 into cluster c1
@@ -246,3 +246,53 @@ func Optics(m []MacDigest) ([][]string, error) {
 
 	return ret, nil
 }
+
+
+// Function that calls the clustering API at http://clustering/cluster
+// and returns the clusters in a list of lists of strings
+func Clustering2(m []MacDigest) ([][]string, error) {
+	
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	j, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("j: %v\n", string(j))
+
+	req, err := http.NewRequest("POST", "http://clustering/cluster", bytes.NewBuffer(j))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errors.New("Error calling clustering API: " + err.Error())
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New("Not 200 response when calling clustering API")
+	}
+
+	// Read the body and decode the response into a list of lists of strings
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.New("Error decoding the response from clustering API: " + err.Error())
+	}
+
+	var clusters [][]string
+	err = json.Unmarshal([]byte(body), &clusters)
+	if err != nil {
+		return nil, errors.New("Error decoding the response from clustering API: " + err.Error())
+	}
+
+	return clusters, nil
+
+}
+
+	
