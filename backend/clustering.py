@@ -7,9 +7,6 @@ from sklearn.cluster import OPTICS
 # Definition of a digested MAC in Pydantic model
 from pydantic import BaseModel
 
-# Import types for defining the model
-from typing import List, Any
-
 # Import logarithms
 from math import log
 
@@ -19,13 +16,13 @@ class DigestedMAC(BaseModel):
     average_signal_strenght: float
     manufacturer: str | None
     oui_id: str
-    type_count: List[int]
-    presence_record: List[bool]
-    ssid_probes: List[str]
+    type_count: list[int]
+    presence_record: list[bool]
+    ssid_probes: list[str]
     ht_capabilities: str | None
-    ht_extended_capabilities: Any | None
-    supported_rates: List[float]
-    tags: List[int]
+    ht_extended_capabilities: str | None
+    supported_rates: list[float]
+    tags: list[int]
 
 
 # FastAPI will be used for receiving data from Go
@@ -35,7 +32,7 @@ from fastapi import FastAPI
 app = FastAPI()
 
 @app.post("/digested-macs")
-def receive_digested_macs(digested_macs: List[DigestedMAC]):
+def receive_digested_macs(digested_macs: list[DigestedMAC]):
     # Perform dimensionality reduction with t-SNE
 
     # Calculate the distances between the digested MACs in a distance matrix
@@ -60,7 +57,7 @@ def receive_digested_macs(digested_macs: List[DigestedMAC]):
 
 
 # The distance matrix calculator
-def calculate_distance_matrix(digested_macs: List[DigestedMAC]):
+def calculate_distance_matrix(digested_macs: list[DigestedMAC]):
     # Create a distance matrix
     distance_matrix = [[0 for i in range(len(digested_macs))] for j in range(len(digested_macs))]
 
@@ -85,7 +82,7 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
         distance += 0 if digested_mac_1.manufacturer == digested_mac_2.manufacturer else 1
     
     # Calculate the distance between the OUI ID
-    distance += 0 if digested_mac_1.oui_id == digested_mac_2.oui_id else q
+    distance += 0 if digested_mac_1.oui_id == digested_mac_2.oui_id else 1
 
     # Calculate the distance between the type count
 
@@ -112,3 +109,10 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
         distance += 1
     
     return distance
+
+
+# Run the fastAPI server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
