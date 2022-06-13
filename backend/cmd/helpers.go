@@ -255,6 +255,15 @@ func Clustering2(m []MacDigest) ([][]string, error) {
 		return nil, nil
 	}
 
+	// If the lenght of MacDigest is less than 5, convert to return type
+	if len(m) < 5 {
+		ret := make([][]string, 0)
+		for _, v := range m {
+			ret = append(ret, []string{v.Mac})
+		}
+		return ret, nil
+	}
+
 	client := http.Client{
 		Timeout: 10 * time.Second,
 	}
