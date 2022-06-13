@@ -91,7 +91,11 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
 
     # Calculate the distance between the average signal strenght
     # The average signal strenght are converted to logarithmic scale
-    distance += abs(log(digested_mac_1.average_signal_strenght) - log(digested_mac_2.average_signal_strenght))
+    dbm = abs(10*log(digested_mac_1.average_signal_strenght/0.000000001, base=10) - 10*log(digested_mac_2.average_signal_strenght/0.001, base=10))
+    print(dbm)
+    distance += dbm
+
+
 
     # Calculate the distance between the manufacturer
     if digested_mac_1.manufacturer is not None and digested_mac_2.manufacturer is not None:
