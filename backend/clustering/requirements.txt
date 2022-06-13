@@ -2,3 +2,5 @@ uvicorn
 fastapi
 pydantic
 sklearn
+plotly
+pandas
