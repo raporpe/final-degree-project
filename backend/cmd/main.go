@@ -506,9 +506,9 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
-		for k, v := range digestedMacs.Digest {
+		for _, v := range digestedMacs.Digest {
 			if !IsDeviceActive(v.PresenceRecord) {
-				delete(digestedMacs.Digest, k)
+				//delete(digestedMacs.Digest, k)
 			}
 		}
 
@@ -528,6 +528,8 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 
 		// Get the clusters from the analysis
 		clusters := Clustering(analyse)
+
+		log.Printf("Digests sent for analysis: %v", len(analyse))
 
 		// Just for testing
 		Clustering2(analyse)
@@ -619,7 +621,7 @@ func GetDigestedMacs(deviceID string, startTime time.Time, endTime time.Time) Re
 		if !matchInDB || multipleMatchInDB {
 			inconsistentData = true
 			inconsistentTimes = append(inconsistentTimes, checkingTime)
-			log.Printf("There is an inconsistency for date %v, device %v, noMatchInDB:%v, multipleMatchInDB:%v\n", checkingTime, deviceID, !matchInDB, multipleMatchInDB)
+			//log.Printf("There is an inconsistency for date %v, device %v, noMatchInDB:%v, multipleMatchInDB:%v\n", checkingTime, deviceID, !matchInDB, multipleMatchInDB)
 		}
 
 	}
