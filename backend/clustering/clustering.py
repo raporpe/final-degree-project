@@ -37,7 +37,7 @@ import logging
 app = FastAPI()
 
 @app.post("/cluster")
-def receive_digested_macs(digested_macs: dict[str, DigestedMAC]):
+def receive_digested_macs(digested_macs: list[DigestedMAC]):
 
     # Calculate the distances between the digested MACs in a distance matrix
     distance_matrix = calculate_distance_matrix(digested_macs)
@@ -71,17 +71,16 @@ def receive_digested_macs(digested_macs: dict[str, DigestedMAC]):
 
 
 # The distance matrix calculator
-def calculate_distance_matrix(digested_macs: dict[str, DigestedMAC]):
+def calculate_distance_matrix(digested_macs: list[DigestedMAC]):
     # Create a distance matrix
     distance_matrix = [[0 for i in range(len(digested_macs))] for j in range(len(digested_macs))]
 
     print(distance_matrix)
 
-    # Calculate the distances between the digested MACs traversing keys
+    # Calculate the distances between the digested MACs
     for i in range(len(digested_macs)):
         for j in range(len(digested_macs)):
-            # Calculate the distance between the digested MACs
-            distance_matrix[i][j] = calculate_distance(digested_macs[list(digested_macs.keys())[i]], digested_macs[list(digested_macs.keys())[j]])
+            distance_matrix[i][j] = calculate_distance(digested_macs[i], digested_macs[j])
     
     return distance_matrix
 
