@@ -48,12 +48,25 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
 
     # Plot the tne results with plotly
     import plotly.express as px
-    # Add the MAC addresses to the t-SNE results
-    tsne_results2 = tsne_results.tolist()
+    # Convert the results to dicts
+    tsne_results_dict = [{'x': tsne_results[i][0], 'y': tsne_results[i][1]} for i in range(len(tsne_results))]
     for i in range(len(digested_macs)):
-        tsne_results2[i].append(digested_macs[i].mac)
-    # Plot the t-SNE results
-    fig = px.scatter(tsne_results2, x=0, y=1, color=2)
+        tsne_results_dict[i]['mac (no)'] = digested_macs[i].mac
+        tsne_results_dict[i]['signal (dbm)'] = int(10*log(digested_macs[i].average_signal_strenght/100000, 10)),
+        tsne_results_dict[i]['presence_record'] = str(digested_macs[i].presence_record)
+        tsne_results_dict[i]['ht_capabilities'] = digested_macs[i].ht_capabilities if digested_macs[i].ht_capabilities else ""
+        tsne_results_dict[i]['ht_extended_capabilities'] = digested_macs[i].ht_extended_capabilities if digested_macs[i].ht_extended_capabilities else ""
+        tsne_results_dict[i]['supported_rates'] = str(sorted(set(digested_macs[i].supported_rates))) if digested_macs[i].supported_rates else ""
+        tsne_results_dict[i]['vendor tags'] = str(sorted(set(digested_macs[i].tags))) if digested_macs[i].tags else ""
+
+    # Plot the t-SNE results with the digested_macs information
+    fig = px.scatter(tsne_results_dict, x="x", y="y",
+        color="vendor tags",
+        hover_data=["mac (no)", "signal (dbm)", "presence_record",
+                    "ht_capabilities", "ht_extended_capabilities", 
+                    "supported_rates", "vendor tags"],
+        title="t-SNE results")
+    
     fig.show()
 
     # Perform OPTICS clustering
@@ -81,8 +94,6 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
     # Merge ret and noise
     ret = ret + noise
     
-    print(ret)
-
     return ret
 
 
@@ -100,7 +111,7 @@ def calculate_distance_matrix(digested_macs: list[DigestedMAC]):
     import plotly.express as px
     # Plot the distance matrix
     fig = px.imshow(distance_matrix)
-    # fig.show()
+    # fig.show()
     
     return distance_matrix
 
@@ -112,7 +123,7 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
     # Calculate the distance between the average signal strenght
     # The average signal strenght are converted to logarithmic scale
     dbm = abs(10*log(digested_mac_1.average_signal_strenght/100000, 10) - 10*log(digested_mac_2.average_signal_strenght/100000, 10))
-    distance += normalize(dbm, 0, 100)*15
+    distance += normalize(dbm, 0, 100)*30
     # MAX 15
 
 
@@ -133,36 +144,35 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
     # Calculate the distance between the HT capabilities
     # MAX 15
     if digested_mac_1.ht_capabilities is not None and digested_mac_2.ht_capabilities is not None:
-        distance += 15 if digested_mac_1.ht_capabilities != digested_mac_2.ht_capabilities else 0
+        distance += 10 if digested_mac_1.ht_capabilities != digested_mac_2.ht_capabilities else 0
     else:
-        distance += 5
+        distance += 2
 
     # Calculate the distance between the HT extended capabilities
     # MAX 15
     if digested_mac_1.ht_extended_capabilities is not None and digested_mac_2.ht_extended_capabilities is not None:
-        distance += 15 if digested_mac_1.ht_extended_capabilities != digested_mac_2.ht_extended_capabilities else 0
+        distance += 10 if digested_mac_1.ht_extended_capabilities != digested_mac_2.ht_extended_capabilities else 0
     else:
-        distance += 5
+        distance += 2
 
     # Calculate the distance between the supported rates
     # MAX 15
     if digested_mac_1.supported_rates != None and digested_mac_2.supported_rates != None:
-        distance += 15 if set(digested_mac_1.supported_rates) != set(digested_mac_2.supported_rates) else 0
+        distance += 10 if set(digested_mac_1.supported_rates) != set(digested_mac_2.supported_rates) else 0
     else:
-        distance += 5
+        distance += 2
     
     # Calculate the distance between the tags
     # MAX 15
     if digested_mac_1.tags != None and digested_mac_2.tags != None:
-        distance += 15 if set(digested_mac_1.tags) != set(digested_mac_2.tags) else 0
+        distance += 10 if set(digested_mac_1.tags) != set(digested_mac_2.tags) else 0
     else:
-        distance += 5
+        distance += 2
     
-    ret = normalize(distance, 10, 75)
-    print(digested_mac_1.mac, digested_mac_2.mac, ret)
+    ret = normalize(distance, 0, 70)
 
     # if the macs are equal, print the distance
-    if digested_mac_1.mac == digested_mac_2.mac:
+    if digested_mac_1.mac == digested_mac_2.mac and False:
         print("Equal:", digested_mac_1.mac, digested_mac_2.mac, distance)
 
 
