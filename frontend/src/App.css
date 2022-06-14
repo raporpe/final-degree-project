@@ -39,18 +39,19 @@
 
 
 
-@media (min-width: 1151px) {
+@media (min-width: 601px) {
   .section{
     display:flex;
-    margin:40px;
-
+    margin:10px;
+    justify-items: center;
+    text-align: center;
   }
   }
 
-@media (max-width: 1150px) {
+@media (max-width: 600px) {
   .section{
-    margin:5px;
-    margin:auto;
+    
+    margin:10px;
     width: 600px;
   }
   }

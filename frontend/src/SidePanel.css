@@ -12,7 +12,7 @@ box-shadow: 10px 10px 50px rgb(200, 200, 200);
 */
 
 
-@media (min-width: 1151px) {
+@media (min-width: 601px) {
     .sidebar {
         box-shadow: 10px 10px 50px rgb(200, 200, 200);
         border-radius: 15px 15px 5px 5px;
@@ -24,7 +24,7 @@ box-shadow: 10px 10px 50px rgb(200, 200, 200);
     }
     }
 
-@media (max-width: 1150px) {
+@media (max-width: 600px) {
     .sidebar{
       margin: 0px 0px 0px 0px;
       box-shadow: 10px 10px 50px rgb(200, 200, 200);

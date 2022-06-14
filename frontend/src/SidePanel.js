@@ -106,7 +106,7 @@ class SidePanel extends React.Component {
                 <img className="sidebar-image" alt="biblioteca uc3m" src="/room.png"></img>
                 <div className="sidebar-content">
                     <div className="sidebar-title">{roomNames[this.props.currentRoom]}</div>
-                    <div className="sidebar-ocupacion">{70}% de ocupacion</div>
+                    <div className="sidebar-ocupacion">{100}% de ocupacion</div>
                     <div className="sidebar-chart">
                         <Chart data={this.state.data.rooms[this.props.currentRoom]} width={325} height={150}></Chart>
                     </div>
