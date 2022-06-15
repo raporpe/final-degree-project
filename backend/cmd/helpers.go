@@ -273,9 +273,7 @@ func Clustering2(m []MacDigest) ([][]string, error) {
 		return nil, err
 	}
 
-	fmt.Printf("j: %v\n", string(j))
-
-	req, err := http.NewRequest("POST", "http://10.144.0.4:8000/cluster", bytes.NewBuffer(j))
+	req, err := http.NewRequest("POST", "http://clustering:8000/cluster", bytes.NewBuffer(j))
 	if err != nil {
 		return nil, err
 	}

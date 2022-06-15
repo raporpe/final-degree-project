@@ -29,5 +29,6 @@
         "atomic": "cpp",
         "cmath": "cpp",
         "stdexcept": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }
