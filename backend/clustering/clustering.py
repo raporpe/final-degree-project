@@ -136,24 +136,10 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
 
     # Calculate the distance between the average signal strenght
     # The average signal strenght are converted to logarithmic scale
+    # MAX 15
     dbm = abs(10*log(digested_mac_1.average_signal_strenght/100000, 10) - 10*log(digested_mac_2.average_signal_strenght/100000, 10))
     distance += normalize(dbm, 0, 100)*30
-    # MAX 15
 
-
-    # Calculate the distance between the manufacturer
-    # if digested_mac_1.manufacturer is not None and digested_mac_2.manufacturer is not None:
-    #     distance += 0 if digested_mac_1.manufacturer == digested_mac_2.manufacturer else 1
-    
-    # Calculate the distance between the OUI ID
-    # MAX 2
-    # distance += 2 if digested_mac_1.oui_id != digested_mac_2.oui_id else 0
-
-    # Calculate the distance between the presence record
-    # MAX 15
-    # for i in range(len(digested_mac_1.presence_record)):
-    #     if digested_mac_1.presence_record[i] or digested_mac_2.presence_record[i]:
-    #         distance += 1 if digested_mac_1.presence_record[i] != digested_mac_2.presence_record[i] else 0
 
     # Calculate the distance between the HT capabilities
     # MAX 15
