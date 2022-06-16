@@ -38,7 +38,7 @@ for s in series:
     obtained = s[0]
     
     # Multiply the count column in dataset obtained
-    obtained["count"] = obtained["count"]
+    obtained["count"] = obtained["count"] * 0.07
 
     # Create empty plotly figure
     fig = go.Figure()

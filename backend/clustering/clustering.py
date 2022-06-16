@@ -36,6 +36,8 @@ import logging
 # Define the single API route for receiving digested MACs
 app = FastAPI()
 
+debug = True
+
 @app.post("/cluster")
 def receive_digested_macs(digested_macs: list[DigestedMAC]):
 
@@ -43,41 +45,52 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
     distance_matrix = calculate_distance_matrix(digested_macs)
 
     # Perform t-SNE
-    tsne = TSNE(n_components=2, perplexity=5, n_iter=300)
+    tsne = TSNE(n_components=2, perplexity=5, n_iter=1000)
     tsne_results = tsne.fit_transform(distance_matrix)
 
-    # Plot the tne results with plotly
-    import plotly.express as px
-    # Convert the results to dicts
-    tsne_results_dict = [{'x': tsne_results[i][0], 'y': tsne_results[i][1]} for i in range(len(tsne_results))]
-    for i in range(len(digested_macs)):
-        tsne_results_dict[i]['mac (no)'] = digested_macs[i].mac
-        tsne_results_dict[i]['signal (dbm)'] = int(10*log(digested_macs[i].average_signal_strenght/100000, 10)),
-        tsne_results_dict[i]['presence_record'] = str(digested_macs[i].presence_record)
-        tsne_results_dict[i]['ht_capabilities'] = digested_macs[i].ht_capabilities if digested_macs[i].ht_capabilities else ""
-        tsne_results_dict[i]['ht_extended_capabilities'] = digested_macs[i].ht_extended_capabilities if digested_macs[i].ht_extended_capabilities else ""
-        tsne_results_dict[i]['supported_rates'] = str(sorted(set(digested_macs[i].supported_rates))) if digested_macs[i].supported_rates else ""
-        tsne_results_dict[i]['vendor tags'] = str(sorted(set(digested_macs[i].tags))) if digested_macs[i].tags else ""
-
-    # Plot the t-SNE results with the digested_macs information
-    fig = px.scatter(tsne_results_dict, x="x", y="y",
-        color="vendor tags",
-        hover_data=["mac (no)", "signal (dbm)", "presence_record",
-                    "ht_capabilities", "ht_extended_capabilities", 
-                    "supported_rates", "vendor tags"],
-        title="t-SNE results")
-    
-    fig.show()
-
     # Perform OPTICS clustering
-    optics = OPTICS(min_samples=5, xi=0.05, min_cluster_size=0.05)
+    optics = OPTICS(min_samples=5, xi=0.1, min_cluster_size=5)
     optics.fit(tsne_results)
 
     # Get the labels of the clusters
     labels = optics.labels_
 
-    # Show the results of optics clustering
-    print("--------- results ----------")
+    if debug:
+
+        # Plot the tne results with plotly
+        import plotly.express as px
+        import plotly.graph_objects as go
+        # Convert the results to dicts
+        tsne_results_dict = [{'x': tsne_results[i][0], 'y': tsne_results[i][1]} for i in range(len(tsne_results))]
+        for i in range(len(digested_macs)):
+            tsne_results_dict[i]['mac'] = digested_macs[i].mac
+            tsne_results_dict[i]['signal (dbm)'] = int(10*log(digested_macs[i].average_signal_strenght/100000, 10)),
+            tsne_results_dict[i]['presence_record'] = str(digested_macs[i].presence_record)
+            tsne_results_dict[i]['ht_capabilities'] = digested_macs[i].ht_capabilities if digested_macs[i].ht_capabilities else ""
+            tsne_results_dict[i]['ht_extended_capabilities'] = digested_macs[i].ht_extended_capabilities if digested_macs[i].ht_extended_capabilities else ""
+            tsne_results_dict[i]['supported_rates'] = str(sorted(set(digested_macs[i].supported_rates))) if digested_macs[i].supported_rates else ""
+            tsne_results_dict[i]['vendor_tags'] = str(sorted(set(digested_macs[i].tags))) if digested_macs[i].tags else ""
+            tsne_results_dict[i]['optics_cluster'] = str(labels[i]) if labels[i] != -1 else "noise"
+            # tsne_results_dict[i]['optics_cluster'] = labels[i]
+
+        # Plot the t-SNE results with the digested_macs information
+        fig = px.scatter(tsne_results_dict, x="x", y="y",
+            # Dark dots
+            color_discrete_sequence=["#e377c2", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#1f77b4", "#7f7f7f", "#bcbd22", "#17becf"],
+            color="optics_cluster",
+            hover_data=["mac", "signal (dbm)", "presence_record",
+                        "ht_capabilities", "ht_extended_capabilities", 
+                        "supported_rates", "vendor_tags", "optics_cluster"],
+            title="t-SNE and OPTICS results")
+
+
+         # Increase the size of the dots
+        fig.update_traces(marker=dict(size=5))
+
+        # Set legend title to "Cluster"
+        fig.update_layout(legend_title_text="Cluster")
+        
+        # fig.show()
 
     # Create a list of length max(labels)
     ret = [[] for i in range(max(labels) + 1)]
@@ -90,7 +103,7 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
             noise.append([digested_macs[idx].mac])
         else:
             ret[l].append(digested_macs[idx].mac)
-            
+
     # Merge ret and noise
     ret = ret + noise
     
@@ -107,11 +120,12 @@ def calculate_distance_matrix(digested_macs: list[DigestedMAC]):
         for j in range(len(digested_macs)):
             distance_matrix[i][j] = calculate_distance(digested_macs[i], digested_macs[j])
 
-    # Show distance matrix in plotly
-    import plotly.express as px
-    # Plot the distance matrix
-    fig = px.imshow(distance_matrix)
-    # fig.show()
+    if debug:
+        # Show distance matrix in plotly
+        import plotly.express as px
+        # Plot the distance matrix
+        fig = px.imshow(distance_matrix)
+        # fig.show()
     
     return distance_matrix
 
@@ -122,24 +136,10 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
 
     # Calculate the distance between the average signal strenght
     # The average signal strenght are converted to logarithmic scale
+    # MAX 15
     dbm = abs(10*log(digested_mac_1.average_signal_strenght/100000, 10) - 10*log(digested_mac_2.average_signal_strenght/100000, 10))
     distance += normalize(dbm, 0, 100)*30
-    # MAX 15
 
-
-    # Calculate the distance between the manufacturer
-    # if digested_mac_1.manufacturer is not None and digested_mac_2.manufacturer is not None:
-    #     distance += 0 if digested_mac_1.manufacturer == digested_mac_2.manufacturer else 1
-    
-    # Calculate the distance between the OUI ID
-    # MAX 2
-    # distance += 2 if digested_mac_1.oui_id != digested_mac_2.oui_id else 0
-
-    # Calculate the distance between the presence record
-    # MAX 15
-    # for i in range(len(digested_mac_1.presence_record)):
-    #     if digested_mac_1.presence_record[i] or digested_mac_2.presence_record[i]:
-    #         distance += 1 if digested_mac_1.presence_record[i] != digested_mac_2.presence_record[i] else 0
 
     # Calculate the distance between the HT capabilities
     # MAX 15
