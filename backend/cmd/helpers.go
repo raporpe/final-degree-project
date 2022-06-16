@@ -192,61 +192,6 @@ func GetNumberOfDuplicates[K comparable](s1 []K, s2 []K) int {
 
 }
 
-func Optics(m []MacDigest) ([][]string, error) {
-
-	client := http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	j, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("j: %v\n", string(j))
-
-	req, err := http.NewRequest("POST", "http://optics/", bytes.NewBuffer(j))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != 200 {
-		return nil, errors.New("Not 200 response")
-	}
-
-	// Read the body and decode the response
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var opticsResult []int
-	err = json.Unmarshal([]byte(body), &opticsResult)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("opticsResult: %v\n", opticsResult)
-
-	ret := make([][]string, len(DeduplicateSlice(opticsResult)))
-
-	for k, v := range opticsResult {
-		if v < 0 {
-			continue
-		}
-		ret[v] = append(ret[v], m[k].Mac)
-	}
-
-	return ret, nil
-}
-
 // Function that calls the clustering API at http://clustering:8000/cluster
 // and returns the clusters in a list of lists of strings
 func Clustering2(m []MacDigest) ([][]string, error) {
@@ -273,7 +218,7 @@ func Clustering2(m []MacDigest) ([][]string, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", "http://clustering:8000/cluster", bytes.NewBuffer(j))
+	req, err := http.NewRequest("POST", "http://10.144.0.4:8000/cluster", bytes.NewBuffer(j))
 	if err != nil {
 		return nil, err
 	}

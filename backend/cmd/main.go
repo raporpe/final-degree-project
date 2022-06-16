@@ -483,6 +483,9 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, error) {
 
+	// This value can be "optics" or "simple"
+	clusteringAlgorithm := "optics"
+
 	// Get the devices that are in the room
 	var CaptureDevicesInRoom []RoomsDB
 	gormDB.Where("room_id = ?", roomID).Find(&CaptureDevicesInRoom)
@@ -513,9 +516,13 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
-		for _, v := range digestedMacs.Digest {
-			if !IsDeviceActive(v.PresenceRecord) {
-				//delete(digestedMacs.Digest, k)
+		// If the clustering algorithm is optics, we need more information
+		// so no digestedMacs are removed
+		if clusteringAlgorithm == "simple" {
+			for k, v := range digestedMacs.Digest {
+				if !IsDeviceActive(v.PresenceRecord) {
+					delete(digestedMacs.Digest, k)
+				}
 			}
 		}
 
@@ -537,7 +544,7 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 
 		var clusters [][]string
 
-		if true {
+		if clusteringAlgorithm == "optics" {
 			// AI clustering system
 			var err error
 			// Just for testing
