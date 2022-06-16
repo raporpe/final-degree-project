@@ -45,7 +45,7 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
     distance_matrix = calculate_distance_matrix(digested_macs)
 
     # Perform t-SNE
-    tsne = TSNE(n_components=2, perplexity=5, n_iter=500)
+    tsne = TSNE(n_components=2, perplexity=5, n_iter=1000)
     tsne_results = tsne.fit_transform(distance_matrix)
 
     # Perform OPTICS clustering
@@ -85,7 +85,7 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
 
 
          # Increase the size of the dots
-        fig.update_traces(marker=dict(size=7))
+        fig.update_traces(marker=dict(size=5))
 
         # Set legend title to "Cluster"
         fig.update_layout(legend_title_text="Cluster")
