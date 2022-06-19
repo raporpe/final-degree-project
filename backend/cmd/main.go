@@ -483,8 +483,8 @@ func GetClusteredMacsHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, error) {
 
-	// This value can be "optics" or "simple"
-	clusteringAlgorithm := "optics"
+	// This value can be "optics+tsne", "vendor_tags" or "none"
+	clusteringAlgorithm := "optics+tsne"
 
 	// Get the devices that are in the room
 	var CaptureDevicesInRoom []RoomsDB
@@ -516,9 +516,9 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 		inconsistentData = inconsistentData || digestedMacs.InconsistentData
 
 		// Exclude mac addresses that are not active
-		// If the clustering algorithm is optics, we need more information
+		// If the clustering algorithm is optics+tsne, we need more information
 		// so no digestedMacs are removed
-		if clusteringAlgorithm == "simple" {
+		if clusteringAlgorithm == "vendor_tags" || clusteringAlgorithm == "none" {
 			for k, v := range digestedMacs.Digest {
 				if !IsDeviceActive(v.PresenceRecord) {
 					delete(digestedMacs.Digest, k)
@@ -526,12 +526,13 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 			}
 		}
 
-		// From map to array
+		// From map to slice
 		var analyse []MacDigest
 		var noAnalyse []MacDigest
 		for _, v := range digestedMacs.Digest {
 			// If the packet does not have a manufacturer, analyse it
-			if v.Manufacturer == nil {
+			// The clustering algorithm must be either vendor_tags or optics+tsne
+			if v.Manufacturer == nil && (clusteringAlgorithm == "vendor_tags" || clusteringAlgorithm == "optics+tsne") {
 				analyse = append(analyse, v)
 			} else {
 				// If the packet does have a manufacturer,
@@ -544,18 +545,18 @@ func GetClusteredMacs(roomID string, endTime time.Time) (ReturnClusteredMacs, er
 
 		var clusters [][]string
 
-		if clusteringAlgorithm == "optics" {
+		if clusteringAlgorithm == "optics+tsne" {
 			// AI clustering system
 			var err error
 			// Just for testing
-			clusters, err = Clustering2(analyse)
+			clusters, err = ClusteringOpticsTSNE(analyse)
 			// If there was a clustering error, return an error
 			if err != nil {
 				return ReturnClusteredMacs{}, err
 			}
-		} else {
-			// Normal clustering system
-			clusters = Clustering(analyse)
+		} else if clusteringAlgorithm == "vendor_tags" {
+			// Clustering based on vendor tags
+			clusters = ClusteringVendorTags(analyse)
 		}
 
 		fmt.Printf("Analyzed clusters: %v\n", len(clusters))

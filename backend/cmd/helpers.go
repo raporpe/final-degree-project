@@ -42,8 +42,8 @@ func DeduplicateSlice[K comparable](slice []K) []K {
 }
 
 // Performs the clustering of the mac addresses
-// It only takes into account the tags
-func Clustering(m []MacDigest) [][]string {
+// It only takes into account the vendor tags
+func ClusteringVendorTags(m []MacDigest) [][]string {
 
 	// Index the MacDigests by their tags
 	macIndexByTags := make(map[string][]MacDigest)
@@ -106,20 +106,15 @@ func SliceToString[K int | float64 | int64](slice []K) string {
 
 func IsDeviceActive(presenceRecord []bool) bool {
 	totalCounter := 0
-	recentCounter := 0
-	for i, v := range presenceRecord {
+	for _, v := range presenceRecord {
 		if v {
 			totalCounter += 1
-			if float64(i) >= float64(len(presenceRecord))-float64(len(presenceRecord))/5.0 {
-				recentCounter += 1
-			}
 		}
 	}
 
-	totalActivity := float64(totalCounter)/float64(len(presenceRecord)) > 0.6
-	recentActivity := float64(recentCounter)/float64(len(presenceRecord)/5) > 0.6
+	totalActivity := float64(totalCounter)/float64(len(presenceRecord)) >= 0.4
 
-	return totalActivity || (recentActivity && false)
+	return totalActivity
 }
 
 // Merge cluster c2 into cluster c1
@@ -194,7 +189,7 @@ func GetNumberOfDuplicates[K comparable](s1 []K, s2 []K) int {
 
 // Function that calls the clustering API at http://clustering:8000/cluster
 // and returns the clusters in a list of lists of strings
-func Clustering2(m []MacDigest) ([][]string, error) {
+func ClusteringOpticsTSNE(m []MacDigest) ([][]string, error) {
 
 	if m == nil {
 		return nil, nil
