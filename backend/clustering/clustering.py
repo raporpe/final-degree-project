@@ -10,6 +10,10 @@ from pydantic import BaseModel
 # Import logarithms
 from math import log
 
+# Import time package
+import time 
+
+
 # The model of a digested MAC to cluster
 class DigestedMAC(BaseModel):
     mac: str
@@ -89,7 +93,11 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
 
         # Set legend title to "Cluster"
         fig.update_layout(legend_title_text="Cluster")
-        
+
+        # Show the plot in pdf format plus current time in iso format
+        fig.write("t-SNE_OPTICS_" + str(time.time()) + ".pdf")
+
+
         # fig.show()
 
     # Create a list of length max(labels)
@@ -136,34 +144,34 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
 
     # Calculate the distance between the average signal strenght
     # The average signal strenght are converted to logarithmic scale
-    # MAX 15
+    # MAX 30
     dbm = abs(10*log(digested_mac_1.average_signal_strenght/100000, 10) - 10*log(digested_mac_2.average_signal_strenght/100000, 10))
     distance += normalize(dbm, 0, 100)*30
 
 
     # Calculate the distance between the HT capabilities
-    # MAX 15
+    # MAX 10
     if digested_mac_1.ht_capabilities is not None and digested_mac_2.ht_capabilities is not None:
         distance += 10 if digested_mac_1.ht_capabilities != digested_mac_2.ht_capabilities else 0
     else:
         distance += 2
 
     # Calculate the distance between the HT extended capabilities
-    # MAX 15
+    # MAX 10
     if digested_mac_1.ht_extended_capabilities is not None and digested_mac_2.ht_extended_capabilities is not None:
         distance += 10 if digested_mac_1.ht_extended_capabilities != digested_mac_2.ht_extended_capabilities else 0
     else:
         distance += 2
 
     # Calculate the distance between the supported rates
-    # MAX 15
+    # MAX 10
     if digested_mac_1.supported_rates != None and digested_mac_2.supported_rates != None:
         distance += 10 if set(digested_mac_1.supported_rates) != set(digested_mac_2.supported_rates) else 0
     else:
         distance += 2
     
     # Calculate the distance between the tags
-    # MAX 15
+    # MAX 10
     if digested_mac_1.tags != None and digested_mac_2.tags != None:
         distance += 10 if set(digested_mac_1.tags) != set(digested_mac_2.tags) else 0
     else:
@@ -171,21 +179,7 @@ def calculate_distance(digested_mac_1: DigestedMAC, digested_mac_2: DigestedMAC)
     
     ret = normalize(distance, 0, 70)
 
-    # if the macs are equal, print the distance
-    if digested_mac_1.mac == digested_mac_2.mac and False:
-        print("Equal:", digested_mac_1.mac, digested_mac_2.mac, distance)
-
-
     return ret
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Print request body 
-    exc_str = f'{exc}'.replace('\n', ' ').replace('   ', ' ')
-    logging.error(exc_str)
-    content = {'status_code': 10422, 'message': exc_str, 'data': None}
-    return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
 # Function to normalize integer values to the range [0, 1]
