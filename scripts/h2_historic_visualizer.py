@@ -1,9 +1,5 @@
-from turtle import width
 import pandas as pd
-import plotly.express as px
-import datetime as dt
 import requests
-from datetime import datetime
 import sys
 import plotly.graph_objs as go
 

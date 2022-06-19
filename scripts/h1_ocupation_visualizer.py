@@ -79,7 +79,8 @@ fig.update_xaxes(dtick="1d")
 # pio.kaleido.scope.mathjax = None
 
 # Save the figure as pdf
-fig.write_html("ocupacion.pdf", width=4000, height=1000)
+
+fig.write_pdf("ocupacion.pdf", width=4000, height=1000)
 
 
 fig.show()
