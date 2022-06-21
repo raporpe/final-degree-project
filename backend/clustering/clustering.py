@@ -94,10 +94,11 @@ def receive_digested_macs(digested_macs: list[DigestedMAC]):
         # Set legend title to "Cluster"
         fig.update_layout(legend_title_text="Cluster")
 
+
         # Show the plot in pdf format plus current time in iso format
-        fig.write("t-SNE_OPTICS_" + str(time.time()) + ".pdf")
+        # fig.write_image("t-SNE_OPTICS_" + str(time.time()) + ".pdf", width=1000, height=1000)
 
-
+        # Show plot in browser
         # fig.show()
 
     # Create a list of length max(labels)
