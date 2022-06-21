@@ -262,7 +262,7 @@ func TestCluster(t *testing.T) {
 		},
 	}
 
-	have := Clustering(m1)
+	have := ClusteringVendorTags(m1)
 
 	if !cmp.Equal(want, have) {
 		t.Fatalf("Error in Clustering, \ngot %v, \nwanted %v", have, want)
