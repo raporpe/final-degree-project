@@ -1,6 +1,4 @@
 import pandas as pd
-import plotly.express as px
-import datetime as dt
 import requests
 from datetime import datetime
 import sys
@@ -52,7 +50,9 @@ if len(sys.argv) > 2 and sys.argv[2] == "abstract":
     # Plot the information in the csv
     fig.add_trace(go.Scatter(x=csv['date'], y=csv['optics'], name='t-SNE + OPTICS'))
     fig.add_trace(go.Scatter(x=csv['date'], y=csv['simple'], name='Vendor tags clustering'))
-    fig.add_trace(go.Scatter(x=real['date'], y=real['count'], name='Real'))
+    fig.add_trace(go.Scatter(x=csv['date'], y=csv['none'], name='No clustering'))
+    # Real trace is bolder
+    fig.add_trace(go.Scatter(x=real['date'], y=real['count'], name='Real', line=dict(width=4)))
 
     # Set the title
     fig.update_layout(title_text="Clustering algorithms comparison")
@@ -101,7 +101,8 @@ else:
         df = pd.DataFrame({
             "date": api["date"],
             "optics": existing_csv["optics"],
-            "simple": api["count"],
+            "simple": existing_csv["simple"],
+            "none": api["count"]
         })
 
         # Save the frame in a csv file
