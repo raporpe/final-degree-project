@@ -27,7 +27,7 @@ class SidePanel extends React.Component {
         let currentTime = new Date();
 
         fetch(
-            "https://tfg-api.raporpe.dev/v1/historic?" + new URLSearchParams({
+            "https://ey2qdxofkj.execute-api.eu-west-1.amazonaws.com/historic?" + new URLSearchParams({
                 from_time: startTime.toISOString(),
                 to_time: currentTime.toISOString()
             }))

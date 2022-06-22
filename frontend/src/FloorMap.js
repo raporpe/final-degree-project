@@ -35,9 +35,6 @@ class FloorMap extends React.Component {
         let occupationsFloor1 = [10, 51, 78, 90] //planta baja
         let occupationsFloor2 = [80, 57]  //planta 1
         let occupationsFloor3 = [21] //planta 2
-        //this.rooms[this.props.currentFloor].forEach((r) => {
-        //    outputRooms.push(<div onClick={() => this.props.onRoomChange(r)}>{r}</div>)
-        //})
 
 
         let ret = <div>
