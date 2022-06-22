@@ -39,63 +39,63 @@ class FloorMap extends React.Component {
         //    outputRooms.push(<div onClick={() => this.props.onRoomChange(r)}>{r}</div>)
         //})
 
-        return (
-            <div>
-                <div>
 
-                    {outputRooms}
+        let ret = <div>
+                <FloorContainer>
+                    <C1></C1>
+                    <div style={{width:"65%", height:"100%"}}>
+                        <Flex style={{width:"100%", height:"33.3%"}}>
+                            <C2 onClick={() => this.props.onRoomChange("entrada")} inputColor={this.handleColor(occupationsFloor1[0])}>Entrada {occupationsFloor1[0]}%
 
-                    {/*PLANTA 0
-                    <div>
-                        <FloorContainer>
-                            <C1></C1>
-                            <div style={{width:"65%", height:"100%"}}>
-                                <Flex style={{width:"100%", height:"33.3%"}}>
-                                    <C2 onClick={() => this.props.onRoomChange("entrada")} inputColor={this.handleColor(occupationsFloor1[0])}>Entrada {occupationsFloor1[0]}%
-
-                                    </C2>
-                                    <C3 onClick={() => this.props.onRoomChange("wc")} inputColor={this.handleColor(occupationsFloor1[1])}>WC {occupationsFloor1[1]}%</C3>
-                                </Flex>
-                                <Flex style={{width:"100%", height:"33.3%"}}>
-                                    <C4></C4>
-                                    <C5 onClick={() => this.props.onRoomChange("makerspace")} inputColor={this.handleColor(occupationsFloor1[2])}>Makerspace {occupationsFloor1[2]}%</C5>
-                                </Flex>
-                                <Flex style={{width:"100%", height:"33.3%"}}>
-                                    <C6 onClick={() => this.props.onRoomChange("sala_de_trabajo")} inputColor={this.handleColor(occupationsFloor1[3])}>Sala de trabajo {occupationsFloor1[3]}%</C6>
-                                </Flex>
-                            </div>
-                        </FloorContainer>
-        </div>*/}
-                    {/* PLANTA 1
-                    <div>
-                        <FloorContainer>
-                            <C11 inputColor={this.handleColor(occupationsFloor1[0])}>Sala silenciosa {occupationsFloor1[0]}%</C11>
-                                <Flex style={{ width: "65%", height: "100%" }}>
-                                    <div style={{ width: "50%", height: "100%" }}>
-                                        <C21 onClick={() => this.props.onRoomChange("entrada")} inputColor={this.handleColor(occupationsFloor1[0])}></C21>
-                                        <C41></C41>
-                                        <C51 onClick={() => this.props.onRoomChange("makerspace")} inputColor={this.handleColor(occupationsFloor1[0])}></C51>
-                                    </div>
-                                    <C31 onClick={() => this.props.onRoomChange("wc")} inputColor={this.handleColor(occupationsFloor1[1])}>Sala de trabajo {occupationsFloor2[1]}%</C31>
-                                </Flex>
-                        </FloorContainer>
-    </div>*/}
-
-                    <div>
-                        <FloorContainer>
-                            <C12 inputColor={this.handleColor(occupationsFloor3[0])}></C12>
-                            <Flex style={{ width: "65%", height: "100%" }}>
-                                <div style={{ width: "50%", height: "100%" }}>
-                                    <C22 onClick={() => this.props.onRoomChange("entrada")} inputColor={this.handleColor(occupationsFloor3[0])}>Sala de trabajo {occupationsFloor3[0]}%</C22>
-                                    <C42></C42>
-                                    <C52 onClick={() => this.props.onRoomChange("makerspace")} inputColor={this.handleColor(occupationsFloor3[0])}></C52>
-                                </div>
-                                <C32 onClick={() => this.props.onRoomChange("wc")} inputColor={this.handleColor(occupationsFloor3[0])}></C32>
-                            </Flex>
-                        </FloorContainer>
+                            </C2>
+                            <C3 onClick={() => this.props.onRoomChange("wc")} inputColor={this.handleColor(occupationsFloor1[1])}>WC {occupationsFloor1[1]}%</C3>
+                        </Flex>
+                        <Flex style={{width:"100%", height:"33.3%"}}>
+                            <C4></C4>
+                            <C5 onClick={() => this.props.onRoomChange("makerspace")} inputColor={this.handleColor(occupationsFloor1[2])}>Makerspace {occupationsFloor1[2]}%</C5>
+                        </Flex>
+                        <Flex style={{width:"100%", height:"33.3%"}}>
+                            <C6 onClick={() => this.props.onRoomChange("sala_de_trabajo")} inputColor={this.handleColor(occupationsFloor1[3])}>Sala de trabajo {occupationsFloor1[3]}%</C6>
+                        </Flex>
                     </div>
-                </div>
-            </div >
+                </FloorContainer>
+             </div>
+        
+        if (this.props.currentFloor === 1) {
+            ret = <div>
+            <FloorContainer>
+                <C11 inputColor={this.handleColor(occupationsFloor1[0])}>Sala silenciosa {occupationsFloor1[0]}%</C11>
+                    <Flex style={{ width: "65%", height: "100%" }}>
+                        <div style={{ width: "50%", height: "100%" }}>
+                            <C21 onClick={() => this.props.onRoomChange("entrada")} inputColor={this.handleColor(occupationsFloor1[0])}></C21>
+                            <C41></C41>
+                            <C51 onClick={() => this.props.onRoomChange("makerspace")} inputColor={this.handleColor(occupationsFloor1[0])}></C51>
+                        </div>
+                        <C31 onClick={() => this.props.onRoomChange("wc")} inputColor={this.handleColor(occupationsFloor1[1])}>Sala de trabajo {occupationsFloor2[1]}%</C31>
+                    </Flex>
+            </FloorContainer>
+</div>
+        }
+        if (this.props.currentFloor === 2) {
+            ret = <div>
+            <FloorContainer>
+                <C12 inputColor={this.handleColor(occupationsFloor3[0])}></C12>
+                <Flex style={{ width: "65%", height: "100%" }}>
+                    <div style={{ width: "50%", height: "100%" }}>
+                        <C22 onClick={() => this.props.onRoomChange("entrada")} inputColor={this.handleColor(occupationsFloor3[0])}>Sala de trabajo {occupationsFloor3[0]}%</C22>
+                        <C42></C42>
+                        <C52 onClick={() => this.props.onRoomChange("makerspace")} inputColor={this.handleColor(occupationsFloor3[0])}></C52>
+                    </div>
+                    <C32 onClick={() => this.props.onRoomChange("wc")} inputColor={this.handleColor(occupationsFloor3[0])}></C32>
+                </Flex>
+            </FloorContainer>
+        </div>
+        }
+
+        return (
+            <>
+                {ret}
+            </>
         )
     }
 }
