@@ -73,7 +73,7 @@ class SidePanel extends React.Component {
         if (this.props.currentRoom === null) {
             return (
                 <div className="sidebar">
-                    <img className="sidebar-image" alt="biblioteca uc3m" src="/placeholder.png"></img>
+                    <img className="sidebar-image" src="/placeholder.png"></img>
                     <div className="sidebar-content">
                         <div className="sidebar-nodata">Selecciona una sala en el mapa</div>
                     </div>
@@ -111,7 +111,7 @@ class SidePanel extends React.Component {
 
         return (
             <div className="sidebar">
-                <img className="sidebar-image" alt="biblioteca uc3m" src="/room.png"></img>
+                <img className="sidebar-image" src={"/" + this.props.currentRoom  + ".png"}></img>
                 <div className="sidebar-content">
                     <div className="sidebar-title">{roomNames[this.props.currentRoom]}</div>
                     
