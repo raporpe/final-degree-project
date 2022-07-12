@@ -103,6 +103,11 @@ class SidePanel extends React.Component {
 
         const current = new Date();
         const currentHour = current.getHours(); 
+        var occupancy = undefined;
+        // Only set occupancy if we have data for the current hour
+        if (this.state.data.rooms[this.props.currentRoom] !== undefined) {
+            occupancy = parseInt(this.state.data.rooms[this.props.currentRoom][currentHour])
+        }
 
         return (
             <div className="sidebar">
@@ -110,7 +115,8 @@ class SidePanel extends React.Component {
                 <div className="sidebar-content">
                     <div className="sidebar-title">{roomNames[this.props.currentRoom]}</div>
                     
-                    <div className="sidebar-ocupacion">{parseInt(this.state.data.rooms[this.props.currentRoom][currentHour])}% de ocupacion</div>
+                    {occupancy !== undefined ? <div className="sidebar-ocupacion">{occupancy}% de ocupacion</div> : <></>}
+                    
                     <div className="sidebar-chart">
                         <Chart data={this.state.data.rooms[this.props.currentRoom]} width={325} height={150}></Chart>
                     </div>
