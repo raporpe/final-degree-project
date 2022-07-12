@@ -7,11 +7,9 @@ import ZoneSelector from './ZoneSelector';
 import './App.css'
 
 let fixedFloors = new Map();
-fixedFloors.set(3, "Salas estudio")
 fixedFloors.set(2, "Hemeroteca")
 fixedFloors.set(1, "Biblioteca")
 fixedFloors.set(0, "Planta baja")
-fixedFloors.set(-1, "Sótano")
 
 class App extends React.Component {
   constructor(props) {
