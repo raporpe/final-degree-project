@@ -20,7 +20,7 @@ class ZoneSelector extends React.Component {
         if (this.state.dropdown) {
             drop =
                 <div className="zone zone-dropdown">
-                    sdfasf
+                    
                 </div>
         }
 
