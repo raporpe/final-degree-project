@@ -1,5 +1,5 @@
-# TFG
-The repository for all my TFG files
+# Final degree project
+The repository for all my final degree project files
 
 Install libtins library
 
