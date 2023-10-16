@@ -1,7 +1,7 @@
 # Exploring the 802.11 protocol to estimate the degree of occupancy of an area
 This repository hosts all my files for my final degree project at Carlos III University.
 
-[Link to report](link.raporpe.me/final-degree-project)
+[Link to report](https://link.raporpe.me/final-degree-project)
 
 ## Summary
 
